@@ -24,14 +24,14 @@ const TestInterface = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(-1);
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    if (questions.length > 0) {
+    if (questions.length > 0 && timeLeft === -1) {
       setTimeLeft(questions.length * 60);
     }
-  }, [questions.length]);
+  }, [questions.length, timeLeft]);
 
   const submitTest = useCallback(async () => {
     if (submitted || questions.length === 0) return;
@@ -77,10 +77,12 @@ const TestInterface = () => {
   }, [submitted, questions, answers, studentInfo, navigate]);
 
   useEffect(() => {
-    if (timeLeft <= 0 && questions.length > 0 && !submitted) {
+    if (timeLeft < 0) return;
+    if (timeLeft === 0 && questions.length > 0 && !submitted) {
       submitTest();
       return;
     }
+    if (timeLeft <= 0) return;
     const timer = setInterval(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearInterval(timer);
   }, [timeLeft, questions.length, submitted, submitTest]);
