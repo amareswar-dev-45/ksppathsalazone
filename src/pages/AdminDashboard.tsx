@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogOut, Users, HelpCircle, BarChart3 } from "lucide-react";
-import QuestionManager from "@/components/admin/QuestionManager";
+import CreateExam from "@/components/admin/CreateExam";
+import ExamList from "@/components/admin/ExamList";
 import StudentResponses from "@/components/admin/StudentResponses";
 
 const AdminDashboard = () => {
@@ -26,13 +27,14 @@ const AdminDashboard = () => {
   const { data: stats } = useQuery({
     queryKey: ["adminStats"],
     queryFn: async () => {
-      const [qRes, sRes] = await Promise.all([
+      const [eRes, qRes, sRes] = await Promise.all([
+        supabase.from("exams").select("*", { count: "exact", head: true }),
         supabase.from("questions").select("*", { count: "exact", head: true }),
         supabase.from("student_responses").select("final_score"),
       ]);
       const scores = sRes.data || [];
       const avg = scores.length > 0 ? scores.reduce((s, r) => s + Number(r.final_score), 0) / scores.length : 0;
-      return { questions: qRes.count || 0, students: scores.length, avgScore: avg.toFixed(1) };
+      return { exams: eRes.count || 0, questions: qRes.count || 0, students: scores.length, avgScore: avg.toFixed(1) };
     },
     enabled: !!session,
   });
@@ -58,8 +60,8 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="glass-card rounded-xl p-4 text-center">
             <HelpCircle className="w-6 h-6 text-primary mx-auto mb-1" />
-            <p className="text-2xl font-heading font-bold text-foreground">{stats?.questions ?? "-"}</p>
-            <p className="text-xs text-muted-foreground">Questions</p>
+            <p className="text-2xl font-heading font-bold text-foreground">{stats?.exams ?? "-"}</p>
+            <p className="text-xs text-muted-foreground">Exams</p>
           </div>
           <div className="glass-card rounded-xl p-4 text-center">
             <Users className="w-6 h-6 text-secondary mx-auto mb-1" />
@@ -73,13 +75,17 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="questions">
+        <Tabs defaultValue="create">
           <TabsList className="w-full">
-            <TabsTrigger value="questions" className="flex-1">Questions</TabsTrigger>
+            <TabsTrigger value="create" className="flex-1">Create Exam</TabsTrigger>
+            <TabsTrigger value="exams" className="flex-1">Exams</TabsTrigger>
             <TabsTrigger value="responses" className="flex-1">Student Responses</TabsTrigger>
           </TabsList>
-          <TabsContent value="questions">
-            <QuestionManager />
+          <TabsContent value="create">
+            <CreateExam />
+          </TabsContent>
+          <TabsContent value="exams">
+            <ExamList />
           </TabsContent>
           <TabsContent value="responses">
             <StudentResponses />
