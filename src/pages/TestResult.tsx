@@ -29,13 +29,15 @@ const TestResult = () => {
   });
 
   const { data: questions = [] } = useQuery({
-    queryKey: ["solutionQuestions"],
+    queryKey: ["solutionQuestions", response?.exam_id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("questions").select("*").order("created_at");
+      let query = supabase.from("questions").select("*").order("created_at");
+      if (response?.exam_id) query = query.eq("exam_id", response.exam_id);
+      const { data, error } = await query;
       if (error) throw error;
       return data as Question[];
     },
-    enabled: showSolutions,
+    enabled: showSolutions && !!response,
   });
 
   if (isLoading) {
