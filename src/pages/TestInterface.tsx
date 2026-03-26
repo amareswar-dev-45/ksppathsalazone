@@ -24,14 +24,14 @@ const TestInterface = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(-1);
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    if (questions.length > 0) {
+    if (questions.length > 0 && timeLeft === -1) {
       setTimeLeft(questions.length * 60);
     }
-  }, [questions.length]);
+  }, [questions.length, timeLeft]);
 
   const submitTest = useCallback(async () => {
     if (submitted || questions.length === 0) return;
