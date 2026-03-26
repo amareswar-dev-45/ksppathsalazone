@@ -9,7 +9,6 @@ const StudentInfo = () => {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
@@ -17,15 +16,13 @@ const StudentInfo = () => {
     if (!name.trim()) e.name = "Name is required";
     if (!email.trim()) e.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Invalid email";
-    if (!phone.trim()) e.phone = "Phone is required";
-    else if (!/^\d{10}$/.test(phone)) e.phone = "Enter 10-digit phone number";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleNext = () => {
     if (validate()) {
-      sessionStorage.setItem("studentInfo", JSON.stringify({ name, email, phone }));
+      sessionStorage.setItem("studentInfo", JSON.stringify({ name, email, phone: "" }));
       navigate("/student/start");
     }
   };
@@ -38,8 +35,8 @@ const StudentInfo = () => {
         </button>
 
         <div className="glass-card rounded-2xl p-8">
-          <h1 className="font-heading font-bold text-2xl text-foreground mb-1">Student Details</h1>
-          <p className="text-muted-foreground text-sm mb-6">Enter your information to proceed</p>
+          <h1 className="font-heading font-bold text-2xl text-foreground mb-1">Student Registration</h1>
+          <p className="text-muted-foreground text-sm mb-6">Enter your details to proceed</p>
 
           <div className="space-y-4">
             <div>
@@ -51,11 +48,6 @@ const StudentInfo = () => {
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="mt-1" />
               {errors.email && <p className="text-destructive text-xs mt-1">{errors.email}</p>}
-            </div>
-            <div>
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit number" className="mt-1" />
-              {errors.phone && <p className="text-destructive text-xs mt-1">{errors.phone}</p>}
             </div>
           </div>
 
