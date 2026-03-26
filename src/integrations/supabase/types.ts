@@ -14,7 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      questions: {
+        Row: {
+          correct_answer: number
+          created_at: string
+          id: string
+          image_url: string | null
+          negative_marks: number
+          option_1: string
+          option_2: string
+          option_3: string
+          option_4: string
+          question_text: string
+          solution: string | null
+          updated_at: string
+        }
+        Insert: {
+          correct_answer: number
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          negative_marks?: number
+          option_1: string
+          option_2: string
+          option_3: string
+          option_4: string
+          question_text: string
+          solution?: string | null
+          updated_at?: string
+        }
+        Update: {
+          correct_answer?: number
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          negative_marks?: number
+          option_1?: string
+          option_2?: string
+          option_3?: string
+          option_4?: string
+          question_text?: string
+          solution?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      student_responses: {
+        Row: {
+          answers: Json
+          correct_count: number
+          created_at: string
+          email: string
+          final_score: number
+          id: string
+          name: string
+          negative_marks_total: number
+          phone: string
+          total_questions: number
+          wrong_count: number
+        }
+        Insert: {
+          answers?: Json
+          correct_count?: number
+          created_at?: string
+          email: string
+          final_score?: number
+          id?: string
+          name: string
+          negative_marks_total?: number
+          phone: string
+          total_questions?: number
+          wrong_count?: number
+        }
+        Update: {
+          answers?: Json
+          correct_count?: number
+          created_at?: string
+          email?: string
+          final_score?: number
+          id?: string
+          name?: string
+          negative_marks_total?: number
+          phone?: string
+          total_questions?: number
+          wrong_count?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
