@@ -179,9 +179,12 @@ const TestInterface = () => {
       </div>
 
       {/* Navigation footer - Next only */}
-      <div className="border-t border-border bg-card px-4 py-3 flex justify-end sticky bottom-0">
+      <div className="border-t border-border bg-card px-4 py-3 flex justify-between sticky bottom-0">
+        <Button variant="outline" onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0} className="gap-1">
+          <ChevronRight className="w-4 h-4 rotate-180" /> Previous
+        </Button>
         <Button onClick={() => setCurrentIndex(i => Math.min(questions.length - 1, i + 1))} disabled={currentIndex === questions.length - 1} className="gap-1">
-          Next <ChevronRight className="w-4 h-4" />
+          Save & Next <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
     </div>
