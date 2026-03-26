@@ -46,7 +46,7 @@ const TestResult = () => {
     return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-destructive">Result not found</p></div>;
   }
 
-  const answers = response.answers as AnswerItem[];
+  const answers = response.answers as unknown as AnswerItem[];
   const unanswered = response.total_questions - response.correct_count - response.wrong_count;
 
   return (
