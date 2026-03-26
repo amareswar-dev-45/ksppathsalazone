@@ -19,7 +19,7 @@ const Index = () => {
           <span className="gradient-text block">Management System</span>
         </h1>
         <p className="text-muted-foreground text-lg max-w-md mx-auto">
-          Take tests, get instant results, and review detailed solutions.
+          Unlock your potential. Conquer your dreams.
         </p>
       </div>
 
