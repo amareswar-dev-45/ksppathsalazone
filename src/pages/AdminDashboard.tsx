@@ -1,0 +1,93 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LogOut, Users, HelpCircle, BarChart3 } from "lucide-react";
+import QuestionManager from "@/components/admin/QuestionManager";
+import StudentResponses from "@/components/admin/StudentResponses";
+
+const AdminDashboard = () => {
+  const navigate = useNavigate();
+  const [session, setSession] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.onAuthStateChange((_, s) => {
+      setSession(s);
+      if (!s) navigate("/admin/login");
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      if (!data.session) navigate("/admin/login");
+    });
+  }, [navigate]);
+
+  const { data: stats } = useQuery({
+    queryKey: ["adminStats"],
+    queryFn: async () => {
+      const [qRes, sRes] = await Promise.all([
+        supabase.from("questions").select("*", { count: "exact", head: true }),
+        supabase.from("student_responses").select("final_score"),
+      ]);
+      const scores = sRes.data || [];
+      const avg = scores.length > 0 ? scores.reduce((s, r) => s + Number(r.final_score), 0) / scores.length : 0;
+      return { questions: qRes.count || 0, students: scores.length, avgScore: avg.toFixed(1) };
+    },
+    enabled: !!session,
+  });
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/admin/login");
+  };
+
+  if (!session) return null;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+        <h1 className="font-heading font-bold text-lg text-foreground">Admin Dashboard</h1>
+        <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
+          <LogOut className="w-4 h-4" /> Logout
+        </Button>
+      </header>
+
+      <div className="max-w-6xl mx-auto p-4">
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="glass-card rounded-xl p-4 text-center">
+            <HelpCircle className="w-6 h-6 text-primary mx-auto mb-1" />
+            <p className="text-2xl font-heading font-bold text-foreground">{stats?.questions ?? "-"}</p>
+            <p className="text-xs text-muted-foreground">Questions</p>
+          </div>
+          <div className="glass-card rounded-xl p-4 text-center">
+            <Users className="w-6 h-6 text-secondary mx-auto mb-1" />
+            <p className="text-2xl font-heading font-bold text-foreground">{stats?.students ?? "-"}</p>
+            <p className="text-xs text-muted-foreground">Attempts</p>
+          </div>
+          <div className="glass-card rounded-xl p-4 text-center">
+            <BarChart3 className="w-6 h-6 text-accent mx-auto mb-1" />
+            <p className="text-2xl font-heading font-bold text-foreground">{stats?.avgScore ?? "-"}</p>
+            <p className="text-xs text-muted-foreground">Avg Score</p>
+          </div>
+        </div>
+
+        <Tabs defaultValue="questions">
+          <TabsList className="w-full">
+            <TabsTrigger value="questions" className="flex-1">Questions</TabsTrigger>
+            <TabsTrigger value="responses" className="flex-1">Student Responses</TabsTrigger>
+          </TabsList>
+          <TabsContent value="questions">
+            <QuestionManager />
+          </TabsContent>
+          <TabsContent value="responses">
+            <StudentResponses />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;
