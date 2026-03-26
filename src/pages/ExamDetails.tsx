@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, PlayCircle, FileText, Award, Clock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, PlayCircle, FileText, Award, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 const ExamDetails = () => {
   const { examId } = useParams<{ examId: string }>();
@@ -47,9 +47,11 @@ const ExamDetails = () => {
         </button>
 
         <div className="glass-card rounded-2xl p-8 text-center">
-          <h1 className="font-heading font-bold text-2xl text-foreground mb-2">{exam.name}</h1>
+          {/* Exam Name */}
+          <h1 className="font-heading font-bold text-2xl text-foreground mb-1">{exam.name}</h1>
           <p className="text-muted-foreground text-sm mb-6">Mock {exam.mock_number}</p>
 
+          {/* Stats Grid */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-muted rounded-xl p-4">
               <FileText className="w-6 h-6 text-primary mx-auto mb-2" />
@@ -62,14 +64,19 @@ const ExamDetails = () => {
               <p className="text-xs text-muted-foreground">Total Marks</p>
             </div>
             <div className="bg-muted rounded-xl p-4">
-              <Clock className="w-6 h-6 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-heading font-bold text-foreground">{exam.total_time_minutes}</p>
-              <p className="text-xs text-muted-foreground">Minutes</p>
+              <CheckCircle2 className="w-6 h-6 text-green-500 mx-auto mb-2" />
+              <p className="text-2xl font-heading font-bold text-foreground">+{stats.marksPerQ}</p>
+              <p className="text-xs text-muted-foreground">Marks / Correct</p>
             </div>
             <div className="bg-muted rounded-xl p-4">
               <AlertTriangle className="w-6 h-6 text-accent mx-auto mb-2" />
               <p className="text-2xl font-heading font-bold text-foreground">-{stats.negMarks}</p>
               <p className="text-xs text-muted-foreground">Neg Marks / Wrong</p>
+            </div>
+            <div className="bg-muted rounded-xl p-4 col-span-2">
+              <Clock className="w-6 h-6 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-heading font-bold text-foreground">{exam.total_time_minutes} min</p>
+              <p className="text-xs text-muted-foreground">Time Duration</p>
             </div>
           </div>
 

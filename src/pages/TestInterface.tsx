@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Send } from "lucide-react";
+import { ChevronRight, Send, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 
 const TestInterface = () => {
@@ -98,24 +98,47 @@ const TestInterface = () => {
     return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading questions...</p></div>;
   }
 
-  const currentQ = questions[currentIndex];
+  const currentQ = questions[currentIndex] as any;
   const minutes = Math.floor(Math.max(0, timeLeft) / 60);
   const seconds = Math.max(0, timeLeft) % 60;
   const isUrgent = timeLeft >= 0 && timeLeft < 60;
 
+  // Subject for current question (dynamic per question)
+  const currentSubject = currentQ?.subject || currentQ?.subject_name || null;
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="border-b border-border bg-card px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-        <span className="text-sm text-muted-foreground font-medium">
-          Q {currentIndex + 1} / {questions.length}
-        </span>
-        <div className={`font-heading font-bold text-lg px-4 py-1 rounded-full ${isUrgent ? "bg-destructive/10 text-destructive animate-pulse" : "bg-primary/10 text-primary"}`}>
-          {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+      {/* ── Top Header: Exam name + Subject + Timer + Submit ── */}
+      <div className="border-b border-border bg-card px-4 py-3 sticky top-0 z-10">
+        {/* Row 1: Exam + Subject labels */}
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="min-w-0">
+              {exam && (
+                <p className="text-xs font-semibold text-primary truncate">
+                  Exam: {exam.name}
+                </p>
+              )}
+              {currentSubject && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                  <BookOpen className="w-3 h-3 shrink-0" />
+                  Subject: <span className="font-medium text-foreground">{currentSubject}</span>
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <div className={`font-heading font-bold text-lg px-4 py-1 rounded-full ${isUrgent ? "bg-destructive/10 text-destructive animate-pulse" : "bg-primary/10 text-primary"}`}>
+              {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+            </div>
+            <Button size="sm" variant="destructive" onClick={submitTest} disabled={submitted} className="gap-1">
+              <Send className="w-3 h-3" /> Submit
+            </Button>
+          </div>
         </div>
-        <Button size="sm" variant="destructive" onClick={submitTest} disabled={submitted} className="gap-1">
-          <Send className="w-3 h-3" /> Submit
-        </Button>
+
+        {/* Row 2: Q counter */}
+        <p className="text-xs text-muted-foreground font-medium">Q {currentIndex + 1} / {questions.length}</p>
       </div>
 
       {/* Question navigation pills */}
@@ -143,21 +166,31 @@ const TestInterface = () => {
       <div className="flex-1 p-4 max-w-3xl mx-auto w-full animate-fade-in" key={currentIndex}>
         {currentQ && (
           <>
+            {/* Per-question subject badge */}
+            {currentSubject && (
+              <div className="flex items-center gap-2 mb-4">
+                <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full border border-primary/20">
+                  <BookOpen className="w-3 h-3" />
+                  {currentSubject}
+                </span>
+              </div>
+            )}
+
             <div className="glass-card rounded-2xl p-6 mb-6">
-              <p className="text-foreground font-medium text-lg leading-relaxed">{(currentQ as any).question_text}</p>
-              {(currentQ as any).image_url && (
-                <img src={(currentQ as any).image_url} alt="Question" className="mt-4 rounded-xl max-h-60 object-contain w-full" />
+              <p className="text-foreground font-medium text-lg leading-relaxed">{currentQ.question_text}</p>
+              {currentQ.image_url && (
+                <img src={currentQ.image_url} alt="Question" className="mt-4 rounded-xl max-h-60 object-contain w-full" />
               )}
             </div>
 
             <div className="space-y-3">
-              {[(currentQ as any).option_1, (currentQ as any).option_2, (currentQ as any).option_3, (currentQ as any).option_4].map((opt: string, i: number) => {
+              {[currentQ.option_1, currentQ.option_2, currentQ.option_3, currentQ.option_4].map((opt: string, i: number) => {
                 const optNum = i + 1;
-                const isSelected = answers[(currentQ as any).id] === optNum;
+                const isSelected = answers[currentQ.id] === optNum;
                 return (
                   <button
                     key={i}
-                    onClick={() => setAnswers(prev => ({ ...prev, [(currentQ as any).id]: optNum }))}
+                    onClick={() => setAnswers(prev => ({ ...prev, [currentQ.id]: optNum }))}
                     className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                       isSelected
                         ? "border-primary bg-primary/5 text-foreground"
@@ -178,7 +211,7 @@ const TestInterface = () => {
         )}
       </div>
 
-      {/* Navigation footer - Next only */}
+      {/* Navigation footer */}
       <div className="border-t border-border bg-card px-4 py-3 flex justify-between sticky bottom-0">
         <Button variant="outline" onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0} className="gap-1">
           <ChevronRight className="w-4 h-4 rotate-180" /> Previous

@@ -9,6 +9,7 @@ const StudentInfo = () => {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [mobile, setMobile] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
@@ -16,13 +17,15 @@ const StudentInfo = () => {
     if (!name.trim()) e.name = "Name is required";
     if (!email.trim()) e.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Invalid email";
+    if (!mobile.trim()) e.mobile = "Mobile number is required";
+    else if (!/^[6-9]\d{9}$/.test(mobile.trim())) e.mobile = "Enter a valid 10-digit mobile number";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleNext = () => {
     if (validate()) {
-      sessionStorage.setItem("studentInfo", JSON.stringify({ name, email, phone: "" }));
+      sessionStorage.setItem("studentInfo", JSON.stringify({ name, email, phone: mobile }));
       navigate("/student/start");
     }
   };
@@ -48,6 +51,19 @@ const StudentInfo = () => {
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="mt-1" />
               {errors.email && <p className="text-destructive text-xs mt-1">{errors.email}</p>}
+            </div>
+            <div>
+              <Label htmlFor="mobile">Mobile Number</Label>
+              <Input
+                id="mobile"
+                type="tel"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                placeholder="Enter 10-digit mobile number"
+                className="mt-1"
+                maxLength={10}
+              />
+              {errors.mobile && <p className="text-destructive text-xs mt-1">{errors.mobile}</p>}
             </div>
           </div>
 
