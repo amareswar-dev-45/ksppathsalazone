@@ -3,13 +3,23 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+
+const ODISHA_DISTRICTS = [
+  "Angul", "Balangir", "Balasore", "Bargarh", "Bhadrak", "Boudh",
+  "Cuttack", "Deogarh", "Dhenkanal", "Gajapati", "Ganjam", "Jagatsinghpur",
+  "Jajpur", "Jharsuguda", "Kalahandi", "Kandhamal", "Kendrapara", "Kendujhar",
+  "Khordha", "Koraput", "Malkangiri", "Mayurbhanj", "Nabarangpur", "Nayagarh",
+  "Nuapada", "Puri", "Rayagada", "Sambalpur", "Sonepur", "Sundargarh",
+  "Other",
+];
 
 const StudentInfo = () => {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [mobile, setMobile] = useState("");
+  const [district, setDistrict] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
@@ -17,15 +27,14 @@ const StudentInfo = () => {
     if (!name.trim()) e.name = "Name is required";
     if (!email.trim()) e.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Invalid email";
-    if (!mobile.trim()) e.mobile = "Mobile number is required";
-    else if (!/^[6-9]\d{9}$/.test(mobile.trim())) e.mobile = "Enter a valid 10-digit mobile number";
+    if (!district) e.district = "Please select your district";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleNext = () => {
     if (validate()) {
-      sessionStorage.setItem("studentInfo", JSON.stringify({ name, email, phone: mobile }));
+      sessionStorage.setItem("studentInfo", JSON.stringify({ name, email, phone: district, district }));
       navigate("/student/start");
     }
   };
@@ -44,26 +53,27 @@ const StudentInfo = () => {
           <div className="space-y-4">
             <div>
               <Label htmlFor="name">Full Name</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your name" className="mt-1" />
+              <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="Enter your name" className="mt-1" />
               {errors.name && <p className="text-destructive text-xs mt-1">{errors.name}</p>}
             </div>
             <div>
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="mt-1" />
+              <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className="mt-1" />
               {errors.email && <p className="text-destructive text-xs mt-1">{errors.email}</p>}
             </div>
             <div>
-              <Label htmlFor="mobile">Mobile Number</Label>
-              <Input
-                id="mobile"
-                type="tel"
-                value={mobile}
-                onChange={(e) => setMobile(e.target.value)}
-                placeholder="Enter 10-digit mobile number"
-                className="mt-1"
-                maxLength={10}
-              />
-              {errors.mobile && <p className="text-destructive text-xs mt-1">{errors.mobile}</p>}
+              <Label htmlFor="district">District</Label>
+              <Select value={district} onValueChange={setDistrict}>
+                <SelectTrigger className="mt-1" id="district">
+                  <SelectValue placeholder="Select your district..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {ODISHA_DISTRICTS.map(d => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.district && <p className="text-destructive text-xs mt-1">{errors.district}</p>}
             </div>
           </div>
 

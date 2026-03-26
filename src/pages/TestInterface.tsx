@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Send, BookOpen } from "lucide-react";
+import { ChevronRight, Send, BookOpen, MoreVertical, Filter, X } from "lucide-react";
 import { toast } from "sonner";
 
 const TestInterface = () => {
   const navigate = useNavigate();
   const studentInfo = JSON.parse(sessionStorage.getItem("studentInfo") || "null");
   const examId = sessionStorage.getItem("currentExamId");
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const { data: exam } = useQuery({
     queryKey: ["testExam", examId],
@@ -21,7 +22,7 @@ const TestInterface = () => {
     enabled: !!examId,
   });
 
-  const { data: questions = [], isLoading } = useQuery({
+  const { data: allQuestions = [], isLoading } = useQuery({
     queryKey: ["testQuestions", examId],
     queryFn: async () => {
       const { data, error } = await supabase.from("questions").select("*").eq("exam_id", examId!).order("created_at");
@@ -35,33 +36,45 @@ const TestInterface = () => {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [timeLeft, setTimeLeft] = useState(-1);
   const [submitted, setSubmitted] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeSubject, setActiveSubject] = useState<string | null>(null);
+
+  // Derived: unique subjects in exam
+  const subjects = Array.from(new Set((allQuestions as any[]).map(q => q.subject).filter(Boolean)));
+
+  // Filtered questions based on active subject
+  const questions = activeSubject
+    ? (allQuestions as any[]).filter(q => q.subject === activeSubject)
+    : (allQuestions as any[]);
+
+  // Reset currentIndex when filter changes
+  useEffect(() => { setCurrentIndex(0); }, [activeSubject]);
+
+  // Close menu on click outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   useEffect(() => {
-    if (exam && timeLeft === -1) {
-      setTimeLeft(exam.total_time_minutes * 60);
-    }
+    if (exam && timeLeft === -1) setTimeLeft(exam.total_time_minutes * 60);
   }, [exam, timeLeft]);
 
   const submitTest = useCallback(async () => {
-    if (submitted || questions.length === 0) return;
+    if (submitted || allQuestions.length === 0) return;
     setSubmitted(true);
 
-    let correct = 0;
-    let wrong = 0;
-    let negTotal = 0;
-    let totalScore = 0;
+    let correct = 0, wrong = 0, negTotal = 0, totalScore = 0;
     const answerArray: { questionId: string; selected: number | null; correct: number }[] = [];
 
-    questions.forEach((q: any) => {
-      const selected = answers[q.id] || null;
+    (allQuestions as any[]).forEach((q: any) => {
+      const selected = answers[q.id] ?? null;
       answerArray.push({ questionId: q.id, selected, correct: q.correct_answer });
-      if (selected === q.correct_answer) {
-        correct++;
-        totalScore += Number(q.marks);
-      } else if (selected !== null) {
-        wrong++;
-        negTotal += Number(q.negative_marks);
-      }
+      if (selected === q.correct_answer) { correct++; totalScore += Number(q.marks); }
+      else if (selected !== null) { wrong++; negTotal += Number(q.negative_marks); }
     });
 
     const finalScore = totalScore - negTotal;
@@ -69,10 +82,10 @@ const TestInterface = () => {
     const { data, error } = await supabase.from("student_responses").insert({
       name: studentInfo.name,
       email: studentInfo.email,
-      phone: studentInfo.phone,
+      phone: studentInfo.district || studentInfo.phone || "",
       exam_id: examId,
       answers: answerArray,
-      total_questions: questions.length,
+      total_questions: allQuestions.length,
       correct_count: correct,
       wrong_count: wrong,
       negative_marks_total: negTotal,
@@ -81,74 +94,122 @@ const TestInterface = () => {
 
     if (error) { toast.error("Failed to submit test"); setSubmitted(false); return; }
     navigate(`/student/result/${data.id}`);
-  }, [submitted, questions, answers, studentInfo, examId, navigate]);
+  }, [submitted, allQuestions, answers, studentInfo, examId, navigate]);
 
   useEffect(() => {
     if (timeLeft < 0) return;
-    if (timeLeft === 0 && questions.length > 0 && !submitted) { submitTest(); return; }
+    if (timeLeft === 0 && allQuestions.length > 0 && !submitted) { submitTest(); return; }
     if (timeLeft <= 0) return;
     const timer = setInterval(() => setTimeLeft(t => t - 1), 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, questions.length, submitted, submitTest]);
+  }, [timeLeft, allQuestions.length, submitted, submitTest]);
 
   if (!studentInfo) { navigate("/student"); return null; }
   if (!examId) { navigate("/student/start"); return null; }
-
-  if (isLoading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading questions...</p></div>;
-  }
+  if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading questions...</p></div>;
 
   const currentQ = questions[currentIndex] as any;
   const minutes = Math.floor(Math.max(0, timeLeft) / 60);
   const seconds = Math.max(0, timeLeft) % 60;
   const isUrgent = timeLeft >= 0 && timeLeft < 60;
+  const currentSubject = currentQ?.subject || null;
 
-  // Subject for current question (dynamic per question)
-  const currentSubject = currentQ?.subject || currentQ?.subject_name || null;
+  // Count answered in full set
+  const answeredCount = Object.keys(answers).length;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* ── Top Header: Exam name + Subject + Timer + Submit ── */}
-      <div className="border-b border-border bg-card px-4 py-3 sticky top-0 z-10">
-        {/* Row 1: Exam + Subject labels */}
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="min-w-0">
-              {exam && (
-                <p className="text-xs font-semibold text-primary truncate">
-                  Exam: {exam.name}
-                </p>
-              )}
-              {currentSubject && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                  <BookOpen className="w-3 h-3 shrink-0" />
-                  Subject: <span className="font-medium text-foreground">{currentSubject}</span>
-                </p>
-              )}
-            </div>
+
+      {/* ── Top Header ── */}
+      <div className="border-b border-border bg-card px-4 py-2.5 sticky top-0 z-20">
+        <div className="flex items-center justify-between gap-2">
+          {/* Left: Exam + Subject */}
+          <div className="min-w-0 flex-1">
+            {exam && (
+              <p className="text-xs font-bold text-primary truncate">Exam: {exam.name}</p>
+            )}
+            {currentSubject && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                <BookOpen className="w-3 h-3 shrink-0" />
+                <span className="font-medium text-foreground">{currentSubject}</span>
+              </p>
+            )}
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <div className={`font-heading font-bold text-lg px-4 py-1 rounded-full ${isUrgent ? "bg-destructive/10 text-destructive animate-pulse" : "bg-primary/10 text-primary"}`}>
+
+          {/* Right: timer + submit + 3-dot menu */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className={`font-heading font-bold text-base px-3 py-1 rounded-full ${isUrgent ? "bg-destructive/10 text-destructive animate-pulse" : "bg-primary/10 text-primary"}`}>
               {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
             </div>
             <Button size="sm" variant="destructive" onClick={submitTest} disabled={submitted} className="gap-1">
               <Send className="w-3 h-3" /> Submit
             </Button>
+
+            {/* 3-dot menu */}
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen(o => !o)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-10 w-52 bg-card border border-border rounded-xl shadow-xl z-30 p-2 animate-fade-in">
+                  <p className="text-xs font-semibold text-muted-foreground px-2 pt-1 pb-2 flex items-center gap-1.5">
+                    <Filter className="w-3 h-3" /> Filter by Subject
+                  </p>
+                  <button
+                    onClick={() => { setActiveSubject(null); setMenuOpen(false); }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                      activeSubject === null ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    All Subjects ({allQuestions.length})
+                  </button>
+                  {subjects.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => { setActiveSubject(s); setMenuOpen(false); }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                        activeSubject === s ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {s} ({(allQuestions as any[]).filter(q => q.subject === s).length})
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Row 2: Q counter */}
-        <p className="text-xs text-muted-foreground font-medium">Q {currentIndex + 1} / {questions.length}</p>
+        {/* Active filter pill + Q counter */}
+        <div className="flex items-center justify-between mt-1">
+          <p className="text-xs text-muted-foreground">
+            Q {currentIndex + 1} / {questions.length}
+            {activeSubject && <span className="ml-1 text-primary font-medium">• filtered</span>}
+            <span className="ml-2 text-muted-foreground">({answeredCount}/{allQuestions.length} answered)</span>
+          </p>
+          {activeSubject && (
+            <button
+              onClick={() => setActiveSubject(null)}
+              className="flex items-center gap-1 text-xs text-primary hover:underline"
+            >
+              <X className="w-3 h-3" /> Clear filter
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Question navigation pills */}
+      {/* Question nav pills */}
       <div className="border-b border-border bg-card px-4 py-2 overflow-x-auto">
-        <div className="flex gap-2 min-w-max">
+        <div className="flex gap-1.5 min-w-max">
           {questions.map((q: any, i: number) => (
             <button
               key={q.id}
               onClick={() => setCurrentIndex(i)}
-              className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+              className={`w-7 h-7 rounded-md text-xs font-medium transition-colors ${
                 i === currentIndex
                   ? "gradient-primary text-primary-foreground"
                   : answers[q.id]
@@ -163,10 +224,10 @@ const TestInterface = () => {
       </div>
 
       {/* Question body */}
-      <div className="flex-1 p-4 max-w-3xl mx-auto w-full animate-fade-in" key={currentIndex}>
-        {currentQ && (
+      <div className="flex-1 p-4 max-w-3xl mx-auto w-full animate-fade-in" key={`${activeSubject}-${currentIndex}`}>
+        {currentQ ? (
           <>
-            {/* Per-question subject badge */}
+            {/* Subject badge */}
             {currentSubject && (
               <div className="flex items-center gap-2 mb-4">
                 <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full border border-primary/20">
@@ -176,7 +237,7 @@ const TestInterface = () => {
               </div>
             )}
 
-            <div className="glass-card rounded-2xl p-6 mb-6">
+            <div className="glass-card rounded-2xl p-6 mb-5">
               <p className="text-foreground font-medium text-lg leading-relaxed">{currentQ.question_text}</p>
               {currentQ.image_url && (
                 <img src={currentQ.image_url} alt="Question" className="mt-4 rounded-xl max-h-60 object-contain w-full" />
@@ -192,9 +253,7 @@ const TestInterface = () => {
                     key={i}
                     onClick={() => setAnswers(prev => ({ ...prev, [currentQ.id]: optNum }))}
                     className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                      isSelected
-                        ? "border-primary bg-primary/5 text-foreground"
-                        : "border-border bg-card text-foreground hover:border-primary/30"
+                      isSelected ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/30"
                     }`}
                   >
                     <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full mr-3 text-sm font-medium ${
@@ -208,16 +267,27 @@ const TestInterface = () => {
               })}
             </div>
           </>
+        ) : (
+          <p className="text-center text-muted-foreground py-12">No questions match the selected filter.</p>
         )}
       </div>
 
-      {/* Navigation footer */}
+      {/* Footer navigation – Next only (as per requirement) */}
       <div className="border-t border-border bg-card px-4 py-3 flex justify-between sticky bottom-0">
-        <Button variant="outline" onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0} className="gap-1">
+        <Button
+          variant="outline"
+          onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
+          disabled={currentIndex === 0}
+          className="gap-1"
+        >
           <ChevronRight className="w-4 h-4 rotate-180" /> Previous
         </Button>
-        <Button onClick={() => setCurrentIndex(i => Math.min(questions.length - 1, i + 1))} disabled={currentIndex === questions.length - 1} className="gap-1">
-          Save & Next <ChevronRight className="w-4 h-4" />
+        <Button
+          onClick={() => setCurrentIndex(i => Math.min(questions.length - 1, i + 1))}
+          disabled={currentIndex === questions.length - 1}
+          className="gap-1"
+        >
+          Next <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
     </div>
