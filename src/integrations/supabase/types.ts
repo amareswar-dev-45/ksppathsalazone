@@ -14,12 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      exams: {
+        Row: {
+          created_at: string
+          id: string
+          mock_number: number
+          name: string
+          total_time_minutes: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mock_number: number
+          name: string
+          total_time_minutes?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mock_number?: number
+          name?: string
+          total_time_minutes?: number
+        }
+        Relationships: []
+      }
       questions: {
         Row: {
           correct_answer: number
           created_at: string
+          exam_id: string | null
           id: string
           image_url: string | null
+          marks: number
           negative_marks: number
           option_1: string
           option_2: string
@@ -27,13 +53,16 @@ export type Database = {
           option_4: string
           question_text: string
           solution: string | null
+          subject: string
           updated_at: string
         }
         Insert: {
           correct_answer: number
           created_at?: string
+          exam_id?: string | null
           id?: string
           image_url?: string | null
+          marks?: number
           negative_marks?: number
           option_1: string
           option_2: string
@@ -41,13 +70,16 @@ export type Database = {
           option_4: string
           question_text: string
           solution?: string | null
+          subject?: string
           updated_at?: string
         }
         Update: {
           correct_answer?: number
           created_at?: string
+          exam_id?: string | null
           id?: string
           image_url?: string | null
+          marks?: number
           negative_marks?: number
           option_1?: string
           option_2?: string
@@ -55,9 +87,18 @@ export type Database = {
           option_4?: string
           question_text?: string
           solution?: string | null
+          subject?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "questions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       student_responses: {
         Row: {
@@ -65,6 +106,7 @@ export type Database = {
           correct_count: number
           created_at: string
           email: string
+          exam_id: string | null
           final_score: number
           id: string
           name: string
@@ -78,6 +120,7 @@ export type Database = {
           correct_count?: number
           created_at?: string
           email: string
+          exam_id?: string | null
           final_score?: number
           id?: string
           name: string
@@ -91,6 +134,7 @@ export type Database = {
           correct_count?: number
           created_at?: string
           email?: string
+          exam_id?: string | null
           final_score?: number
           id?: string
           name?: string
@@ -99,7 +143,15 @@ export type Database = {
           total_questions?: number
           wrong_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "student_responses_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
