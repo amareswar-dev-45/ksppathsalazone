@@ -1,16 +1,18 @@
 import { useNavigate } from "react-router-dom";
 import { GraduationCap, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import logo from "@/assets/logo.jpeg";
 
 const Index = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative">
+      <img src={logo} alt="KSP Pathsala Logo" className="absolute top-4 left-4 w-16 h-16 rounded-full object-cover shadow-lg" />
       <div className="text-center mb-12 animate-fade-in">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
           <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-          Online Test Platform
+          KSP Pathsala - Online Test
         </div>
         <h1 className="text-4xl md:text-6xl font-heading font-bold text-foreground mb-4">
           Online Test
