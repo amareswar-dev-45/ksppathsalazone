@@ -12,11 +12,11 @@ const Index = () => {
       <div className="text-center mb-12 animate-fade-in">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
           <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-          KSP Pathsala - Online Test
+          KSP Pathsala - Rank Booster Test
         </div>
         <h1 className="text-4xl md:text-6xl font-heading font-bold text-foreground mb-4">
-          Online Test
-          <span className="gradient-text block">Management System</span>
+          Rank Booster
+          <span className="gradient-text block">Test</span>
         </h1>
         <p className="text-muted-foreground text-lg max-w-md mx-auto">
           Unlock your potential. Conquer your dreams.
