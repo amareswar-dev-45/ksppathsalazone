@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, Send, Plus, Image, Save, Pencil } from "lucide-react";
+import { ArrowRight, Send, Plus, Image, Save, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const SUBJECTS = [
@@ -84,7 +84,9 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
   });
 
   // ── State ────────────────────────────────────────────────────────────────
-  const [step, setStep] = useState<Step>("name");
+  // When editing an existing exam, start directly on "questions" so admin actions
+  // (Save/Add Question/Submit & Make Live) are always visible.
+  const [step, setStep] = useState<Step>(editExamId ? "questions" : "name");
   const [examName, setExamName] = useState("");
   const [mockNumber, setMockNumber] = useState<number>(1);
   const [questions, setQuestions] = useState<QuestionForm[]>([emptyQuestion()]);
@@ -92,6 +94,7 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
   const [totalTime, setTotalTime] = useState(60);
   const [uploading, setUploading] = useState(false);
   const [existingExamId, setExistingExamId] = useState<string | null>(editExamId || null);
+  const [deletingQuestion, setDeletingQuestion] = useState(false);
 
   const updateQuestion = useCallback((key: keyof QuestionForm, value: any) => {
     setQuestions(prev => {
@@ -126,6 +129,36 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
   const isCurrentValid = () => {
     const q = questions[currentQ];
     return q.question_text && q.option_1 && q.option_2 && q.option_3 && q.option_4 && q.subject;
+  };
+
+  const deleteCurrentQuestion = async () => {
+    const q = questions[currentQ];
+    if (!q) return;
+
+    const ok = confirm("Are you sure you want to delete this question?");
+    if (!ok) return;
+
+    try {
+      setDeletingQuestion(true);
+
+      // If it already exists in DB, delete it permanently.
+      if (q._id) {
+        const { error } = await supabase.from("questions").delete().eq("id", q._id);
+        if (error) throw error;
+      }
+
+      // Remove from local UI list. If this was the last question, show an empty block.
+      const nextQuestions = questions.filter((_, idx) => idx !== currentQ);
+      const normalized = nextQuestions.length > 0 ? nextQuestions : [emptyQuestion()];
+      setQuestions(normalized);
+      setCurrentQ(Math.min(currentQ, normalized.length - 1));
+      toast.success("Question deleted");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : undefined;
+      toast.error(message ?? "Failed to delete question");
+    } finally {
+      setDeletingQuestion(false);
+    }
   };
 
   // ── Save draft (not visible to students) ─────────────────────────────────
@@ -316,7 +349,7 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
             className="flex-1 gap-2 gradient-primary border-0 text-primary-foreground"
           >
             <Send className="w-4 h-4" />
-            {submitMutation.isPending ? "Publishing..." : "Publish Exam"}
+            {submitMutation.isPending ? "Publishing..." : "Submit & Make Live"}
           </Button>
         </div>
       </div>
@@ -324,9 +357,8 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
   }
 
   // ── STEP: Questions ──────────────────────────────────────────────────────
-  if (loadingEdit) {
-    return <p className="text-center text-muted-foreground py-12">Loading exam...</p>;
-  }
+  // Note: In edit mode we avoid blocking the UI while data loads, so admin
+  // actions (Save/Add Question/Submit & Make Live) remain visible.
 
   const q = questions[currentQ];
   const filledCount = questions.filter(qq => !!qq.question_text).length;
@@ -354,7 +386,7 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
             className="gap-1 border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
           >
             <Save className="w-3.5 h-3.5" />
-            {saveDraftMutation.isPending ? "Saving..." : `Save Draft (${filledCount})`}
+            {saveDraftMutation.isPending ? "Saving..." : `Save (${filledCount})`}
           </Button>
         </div>
       </div>
@@ -471,7 +503,16 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
             className="gap-2 border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
           >
             <Save className="w-4 h-4" />
-            {saveDraftMutation.isPending ? "Saving..." : "Save Draft"}
+            {saveDraftMutation.isPending ? "Saving..." : "Save"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={deleteCurrentQuestion}
+            disabled={deletingQuestion}
+            className="gap-2 border-destructive/40 text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="w-4 h-4" />
+            {deletingQuestion ? "Deleting..." : "Delete"}
           </Button>
           <Button
             onClick={() => setStep("time")}

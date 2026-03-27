@@ -241,12 +241,17 @@ const TestInterface = () => {
       <div className="flex-1 p-4 max-w-3xl mx-auto w-full animate-fade-in" key={`${activeSubject}-${currentIndex}`}>
         {currentQ ? (
           <>
-            {/* Subject badge */}
+            {/* Question header info */}
             {currentSubject && (
-              <div className="flex items-center gap-2 mb-4">
-                <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full border border-primary/20">
-                  <BookOpen className="w-3 h-3" />
-                  {currentSubject}
+              <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-muted-foreground">
+                <span>
+                  <span className="font-medium text-foreground">Subject:</span> {currentSubject}
+                </span>
+                <span>
+                  <span className="font-medium text-foreground">Marks:</span> +{Number(currentQ?.marks ?? 0)}
+                </span>
+                <span>
+                  <span className="font-medium text-foreground">Negative:</span> -{Number(currentQ?.negative_marks ?? 0)}
                 </span>
               </div>
             )}
@@ -301,7 +306,7 @@ const TestInterface = () => {
           disabled={currentIndex === questions.length - 1}
           className="gap-1"
         >
-          Next <ChevronRight className="w-4 h-4" />
+          Save & Next <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
     </div>

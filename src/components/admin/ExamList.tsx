@@ -23,7 +23,7 @@ const ExamList = () => {
   });
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete exam "${name}" and all its questions?`)) return;
+    if (!confirm("Delete this exam and all its questions?")) return;
     const { error } = await supabase.from("exams").delete().eq("id", id);
     if (error) { toast.error("Failed to delete"); return; }
     toast.success("Exam deleted");
@@ -90,12 +90,13 @@ const ExamList = () => {
                 </Button>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-2"
                   onClick={() => handleDelete(e.id, e.name)}
                   title="Delete exam"
                 >
                   <Trash2 className="w-4 h-4" />
+                  Delete Exam
                 </Button>
               </div>
             </div>
