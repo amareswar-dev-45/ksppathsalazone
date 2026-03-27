@@ -2,14 +2,19 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, PlayCircle, FileText, Award, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, PlayCircle, FileText, Award, Clock, AlertTriangle, CheckCircle2, Lock } from "lucide-react";
 
+/**
+ * SECURITY GATE:
+ *   Even if a student navigates directly to /student/exam/:examId,
+ *   if the exam is a draft (total_time_minutes === 0), show "Exam not available".
+ */
 const ExamDetails = () => {
   const { examId } = useParams<{ examId: string }>();
   const navigate = useNavigate();
   const studentInfo = JSON.parse(sessionStorage.getItem("studentInfo") || "null");
 
-  const { data: exam } = useQuery({
+  const { data: exam, isLoading: examLoading } = useQuery({
     queryKey: ["examDetail", examId],
     queryFn: async () => {
       const { data, error } = await supabase.from("exams").select("*").eq("id", examId!).single();
@@ -32,7 +37,49 @@ const ExamDetails = () => {
   });
 
   if (!studentInfo) { navigate("/student"); return null; }
-  if (!exam || !stats) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>;
+
+  if (examLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  // 🔒 SECURITY GATE — block draft exams even on direct URL access
+  const isDraft = !exam || Number(exam.total_time_minutes) === 0;
+  if (isDraft) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md animate-fade-in">
+          <button
+            onClick={() => navigate("/student/start")}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+          <div className="glass-card rounded-2xl p-10 text-center">
+            <Lock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="font-heading font-bold text-xl text-foreground mb-2">Exam Not Available</h2>
+            <p className="text-muted-foreground text-sm mb-6">
+              This exam has not been published yet. Please check back later or contact your admin.
+            </p>
+            <Button variant="outline" onClick={() => navigate("/student/start")} className="gap-2">
+              <ArrowLeft className="w-4 h-4" /> Go Back to Exams
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   const handleStart = () => {
     sessionStorage.setItem("currentExamId", examId!);
@@ -42,7 +89,10 @@ const ExamDetails = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md animate-fade-in">
-        <button onClick={() => navigate("/student/start")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
+        <button
+          onClick={() => navigate("/student/start")}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors"
+        >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
 

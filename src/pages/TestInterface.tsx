@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Send, BookOpen, MoreVertical, Filter, X } from "lucide-react";
+import { ChevronRight, Send, BookOpen, MoreVertical, Filter, X, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 const TestInterface = () => {
@@ -107,6 +107,20 @@ const TestInterface = () => {
   if (!studentInfo) { navigate("/student"); return null; }
   if (!examId) { navigate("/student/start"); return null; }
   if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading questions...</p></div>;
+
+  // 🔒 SECURITY GATE — block access if exam is still a draft
+  if (exam && Number(exam.total_time_minutes) === 0) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <Lock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="font-heading font-bold text-xl text-foreground mb-2">Exam Not Available</h2>
+          <p className="text-muted-foreground text-sm mb-6">This exam has not been published yet.</p>
+          <Button variant="outline" onClick={() => navigate("/student/start")}>← Back to Exams</Button>
+        </div>
+      </div>
+    );
+  }
 
   const currentQ = questions[currentIndex] as any;
   const minutes = Math.floor(Math.max(0, timeLeft) / 60);
