@@ -36,10 +36,15 @@ const ExamList = () => {
 
   // If editing, render the CreateExam in edit mode
   if (editingExamId) {
+    const examToEdit = exams.find((e: any) => e.id === editingExamId);
+    const deducedTypeMatch = examToEdit?.name.match(/^\[(live|advanced|pro)\]/i);
+    const deducedType = deducedTypeMatch ? deducedTypeMatch[1].toLowerCase() : "advanced";
+    
     return (
       <div className="mt-4">
         <CreateExam
           editExamId={editingExamId}
+          testType={deducedType as any}
           onEditDone={() => {
             setEditingExamId(null);
             queryClient.invalidateQueries({ queryKey: ["adminExams"] });
@@ -53,12 +58,25 @@ const ExamList = () => {
     <div className="space-y-3 mt-2">
       {exams.map((e: any) => {
         const isDraft = !e.total_time_minutes || e.total_time_minutes === 0;
+        
+        // Extract type prefix
+        const typeMatch = e.name.match(/^\[(live|advanced|pro)\]/i);
+        const testType = typeMatch ? typeMatch[1].toLowerCase() : "advanced";
+        const cleanName = e.name.replace(/^\[(live|advanced|pro)\]\s*/i, '');
+        
         return (
           <div key={e.id} className="glass-card rounded-xl p-4">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-foreground font-medium">{e.name}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase ${
+                    testType === 'live' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                    testType === 'pro' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' :
+                    'bg-primary/10 text-primary border border-primary/20'
+                  }`}>
+                    {testType}
+                  </span>
+                  <p className="text-foreground font-medium">{cleanName}</p>
                   {isDraft ? (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30 font-medium">
                       💾 Draft

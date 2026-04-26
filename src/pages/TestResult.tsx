@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Home, Eye, CheckCircle2, XCircle, MinusCircle, Trophy, Medal, Crown } from "lucide-react";
+import { Home, Eye, CheckCircle2, XCircle, MinusCircle, Trophy, Medal, Crown, Download, Printer, Target, BarChart2, Hash } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Question = Tables<"questions">;
@@ -52,7 +52,7 @@ const TestResult = () => {
       if (error) throw error;
       return data;
     },
-    enabled: showLeaderboard && !!response?.exam_id,
+    enabled: !!response?.exam_id,
   });
 
   if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>;
@@ -60,9 +60,13 @@ const TestResult = () => {
 
   const answers = response.answers as unknown as AnswerItem[];
   const unanswered = response.total_questions - response.correct_count - response.wrong_count;
+  const attempted = response.correct_count + response.wrong_count;
+  const accuracy = attempted > 0 ? ((response.correct_count / attempted) * 100).toFixed(1) : "0.0";
 
-  // Find my rank in leaderboard
-  const myRank = showLeaderboard ? leaderboard.findIndex(r => r.id === id) + 1 : null;
+  // Rank: based on leaderboard
+  const myRankIndex = leaderboard.findIndex(r => r.id === id);
+  const myRank = myRankIndex >= 0 ? myRankIndex + 1 : null;
+
 
   const rankIcon = (rank: number) => {
     if (rank === 1) return <Crown className="w-4 h-4 text-yellow-400" />;
@@ -87,11 +91,16 @@ const TestResult = () => {
             <p className="text-muted-foreground text-sm mt-1">Final Score</p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
             <StatCard icon={<CheckCircle2 className="w-5 h-5" />} label="Correct" value={response.correct_count} color="text-secondary" bg="bg-secondary/10" />
             <StatCard icon={<XCircle className="w-5 h-5" />} label="Wrong" value={response.wrong_count} color="text-destructive" bg="bg-destructive/10" />
             <StatCard icon={<MinusCircle className="w-5 h-5" />} label="Negative" value={`-${response.negative_marks_total}`} color="text-accent" bg="bg-accent/10" />
             <StatCard icon={<MinusCircle className="w-5 h-5" />} label="Unanswered" value={unanswered} color="text-muted-foreground" bg="bg-muted" />
+          </div>
+          {/* Extended Stats */}
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard icon={<Hash className="w-5 h-5" />} label="Attempted" value={attempted} color="text-primary" bg="bg-primary/10" />
+            <StatCard icon={<Target className="w-5 h-5" />} label="Accuracy" value={`${accuracy}%`} color="text-yellow-400" bg="bg-yellow-400/10" />
           </div>
         </div>
 
@@ -172,7 +181,68 @@ const TestResult = () => {
 
         {/* ── Solutions ── */}
         {showSolutions && questions.length > 0 && (
-          <div className="space-y-4">
+          <div className="flex gap-2 mb-3 justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+              onClick={() => {
+                const printContent = document.getElementById("solutions-section");
+                if (!printContent) return;
+                const win = window.open("", "_blank");
+                if (!win) return;
+                win.document.write(`<html><head><title>Solutions - ${response.name}</title><style>
+                  body { font-family: system-ui, sans-serif; padding: 20px; color: #111; }
+                  .question-block { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+                  .subject-tag { background: #eff6ff; color: #3b82f6; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; display: inline-block; margin-bottom: 8px; }
+                  .option { padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin: 4px 0; font-size: 13px; }
+                  .correct { border-color: #22c55e; background: #f0fdf4; }
+                  .wrong { border-color: #ef4444; background: #fef2f2; }
+                  .solution { background: #f8fafc; border-left: 3px solid #3b82f6; padding: 8px 12px; margin-top: 8px; font-size: 13px; border-radius: 4px; }
+                  h1 { font-size: 20px; margin-bottom: 4px; } p.sub { color: #64748b; margin-bottom: 16px; font-size: 13px; }
+                </style></head><body>`);
+                win.document.write(`<h1>Test Solutions</h1><p class="sub">${response.name} • Score: ${response.final_score}</p>`);
+                win.document.write(printContent.innerHTML);
+                win.document.write(`</body></html>`);
+                win.document.close();
+                win.print();
+              }}
+            >
+              <Printer className="w-4 h-4" /> Print
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 border-secondary/30 text-secondary hover:bg-secondary/10"
+              onClick={() => {
+                // Generate a simple printable PDF via print dialog
+                const printContent = document.getElementById("solutions-section");
+                if (!printContent) return;
+                const win = window.open("", "_blank");
+                if (!win) return;
+                win.document.write(`<html><head><title>Solutions - ${response.name}</title><style>
+                  @page { margin: 15mm; } body { font-family: system-ui, sans-serif; padding: 0; color: #111; }
+                  .question-block { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px; page-break-inside: avoid; }
+                  .subject-tag { background: #eff6ff; color: #3b82f6; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; display: inline-block; margin-bottom: 8px; }
+                  .option { padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin: 4px 0; font-size: 13px; }
+                  .correct { border-color: #22c55e; background: #f0fdf4; }
+                  .wrong { border-color: #ef4444; background: #fef2f2; }
+                  .solution { background: #f8fafc; border-left: 3px solid #3b82f6; padding: 8px 12px; margin-top: 8px; font-size: 13px; border-radius: 4px; }
+                  h1 { font-size: 20px; margin-bottom: 4px; } p.sub { color: #64748b; margin-bottom: 16px; font-size: 13px; }
+                </style></head><body>`);
+                win.document.write(`<h1>Test Solutions</h1><p class="sub">${response.name} • Score: ${response.final_score} • Accuracy: ${accuracy}%</p>`);
+                win.document.write(printContent.innerHTML);
+                win.document.write(`</body></html>`);
+                win.document.close();
+                setTimeout(() => { win.print(); }, 500);
+              }}
+            >
+              <Download className="w-4 h-4" /> Download PDF
+            </Button>
+          </div>
+        )}
+        {showSolutions && questions.length > 0 && (
+          <div id="solutions-section" className="space-y-4">
             {questions.map((q, i) => {
               const ans = answers.find(a => a.questionId === q.id);
               const selected = ans?.selected;

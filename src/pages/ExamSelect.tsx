@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, FileText, Clock, Award, Lock } from "lucide-react";
+import { ArrowLeft, FileText, Clock, Award, Lock, Zap, BookOpen, Shield, Eye, EyeOff } from "lucide-react";
 
 /**
  * VISIBILITY RULE:
@@ -12,11 +13,28 @@ import { ArrowLeft, FileText, Clock, Award, Lock } from "lucide-react";
  *
  * This is enforced at query level — drafts are never fetched.
  */
-const isPublished = (exam: any) => Number(exam.total_time_minutes) > 0;
+
+type TestType = null | "live" | "advanced" | "pro";
 
 const ExamSelect = () => {
   const navigate = useNavigate();
   const studentInfo = JSON.parse(sessionStorage.getItem("studentInfo") || "null");
+  const [testType, setTestType] = useState<TestType>(null);
+
+  // Pro Test state
+  const [proPassword, setProPassword] = useState("");
+  const [proError, setProError] = useState("");
+  const [proUnlocked, setProUnlocked] = useState(false);
+  const [showProPwd, setShowProPwd] = useState(false);
+
+  const handleProUnlock = () => {
+    if (proPassword === "ksp@123") {
+      setProUnlocked(true);
+      setProError("");
+    } else {
+      setProError("Incorrect password. Please try again.");
+    }
+  };
 
   const { data: exams = [], isLoading } = useQuery({
     queryKey: ["studentExams"],
@@ -58,21 +76,172 @@ const ExamSelect = () => {
 
   if (!studentInfo) { navigate("/student"); return null; }
 
+  // ── Test Type Selection Screen ───────────────────────────────────────────
+  if (!testType) {
+    return (
+      <div className="min-h-screen bg-background p-4">
+        <div className="max-w-lg mx-auto animate-fade-in">
+          <button
+            onClick={() => navigate("/student")}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+          <h1 className="font-heading font-bold text-2xl text-foreground mb-1">Select Test Type</h1>
+          <p className="text-muted-foreground text-sm mb-6">Welcome, {studentInfo.name} — choose which test you want to attempt</p>
+
+          <div className="space-y-4">
+            {/* Live Test */}
+            <button
+              onClick={() => setTestType("live")}
+              className="w-full glass-card rounded-2xl p-6 text-left hover:shadow-xl transition-all hover:-translate-y-0.5 group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center group-hover:scale-110 transition-transform relative">
+                  <Zap className="w-6 h-6 text-red-400" />
+                  {/* Blinking red indicator */}
+                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 animate-ping" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="font-heading font-semibold text-lg text-foreground">Live Test</h3>
+                    <span className="text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full animate-pulse">● LIVE</span>
+                  </div>
+                  <p className="text-muted-foreground text-sm">Join ongoing live test session</p>
+                </div>
+              </div>
+            </button>
+
+            {/* Advanced Test */}
+            <button
+              onClick={() => setTestType("advanced")}
+              className="w-full glass-card rounded-2xl p-6 text-left hover:shadow-xl transition-all hover:-translate-y-0.5 group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <BookOpen className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-semibold text-lg text-foreground">Advanced Test</h3>
+                  <p className="text-muted-foreground text-sm">Practice with advanced MCQ questions</p>
+                </div>
+              </div>
+            </button>
+
+            {/* Pro Test */}
+            <button
+              onClick={() => setTestType("pro")}
+              className="w-full glass-card rounded-2xl p-6 text-left hover:shadow-xl transition-all hover:-translate-y-0.5 group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Shield className="w-6 h-6 text-yellow-400" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-semibold text-lg text-foreground">Pro Test</h3>
+                  <p className="text-muted-foreground text-sm">Premium test for serious aspirants</p>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Exam list (shown after selecting a test type) ─────────────────────────
+  const isLive = testType === "live";
+
+  if (testType === "pro" && !proUnlocked) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md animate-fade-in">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-heading font-bold text-2xl text-foreground">Pro Test</h2>
+            <button onClick={() => setTestType(null)} className="text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-5 h-5" /></button>
+          </div>
+          <div className="glass-card rounded-2xl p-8">
+            <div className="w-14 h-14 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center mx-auto mb-5">
+              <Shield className="w-7 h-7 text-yellow-400" />
+            </div>
+            <h3 className="font-heading font-semibold text-lg text-foreground text-center mb-1">Password Required</h3>
+            <p className="text-muted-foreground text-sm text-center mb-6">Enter the Pro Test password to continue</p>
+            <div className="relative mt-1 mb-4">
+              <input
+                type={showProPwd ? "text" : "password"}
+                value={proPassword}
+                onChange={e => { setProPassword(e.target.value); setProError(""); }}
+                onKeyDown={e => e.key === "Enter" && handleProUnlock()}
+                placeholder="Enter password..."
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowProPwd(!showProPwd)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showProPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {proError && <p className="text-destructive text-sm mb-3">{proError}</p>}
+            <div className="flex gap-3">
+              <button onClick={() => setTestType(null)} className="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">Back</button>
+              <button onClick={handleProUnlock} className="flex-1 gap-2 bg-yellow-500 hover:bg-yellow-600 text-black border-0 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2">
+                <Shield className="w-4 h-4 mr-2" /> Unlock
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Filter exams by selected type and status
+  const filteredExams = exams.filter((e: any) => {
+    const typeMatch = e.name.match(/^\[(live|advanced|pro)\]/i);
+    const eType = typeMatch ? typeMatch[1].toLowerCase() : "advanced";
+    if (eType !== testType) return false;
+    
+    // For live tests, do not show if they have already ended
+    if (eType === "live") {
+      const createdTime = new Date(e.created_at).getTime();
+      const nowTime = Date.now();
+      const elapsedSeconds = Math.floor((nowTime - createdTime) / 1000);
+      const remaining = (e.total_time_minutes * 60) - elapsedSeconds;
+      if (remaining <= 0) return false;
+    }
+    
+    return true;
+  });
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-lg mx-auto animate-fade-in">
         <button
-          onClick={() => navigate("/student")}
+          onClick={() => setTestType(null)}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-        <h1 className="font-heading font-bold text-2xl text-foreground mb-1">Select Exam</h1>
+
+        <div className="flex items-center gap-3 mb-1">
+          <h1 className="font-heading font-bold text-2xl text-foreground">
+            {testType === "live" ? "Live Test" : testType === "advanced" ? "Advanced Test" : "Pro Test"}
+          </h1>
+          {isLive && (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/30">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping absolute" />
+              <span className="w-2 h-2 rounded-full bg-red-500 relative" />
+              <span className="text-xs font-bold text-red-400 ml-1">LIVE</span>
+            </div>
+          )}
+        </div>
         <p className="text-muted-foreground text-sm mb-6">Welcome, {studentInfo.name}</p>
 
         {isLoading ? (
           <p className="text-muted-foreground text-center py-8">Loading exams...</p>
-        ) : exams.length === 0 ? (
+        ) : filteredExams.length === 0 ? (
           <div className="glass-card rounded-2xl p-8 text-center">
             <Lock className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground font-medium">No exams available yet.</p>
@@ -80,14 +249,24 @@ const ExamSelect = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {exams.map((e: any) => (
+            {filteredExams.map((e: any) => {
+              const cleanName = e.name.replace(/^\[(live|advanced|pro)\]\s*/i, '');
+              return (
               <button
                 key={e.id}
                 onClick={() => navigate(`/student/exam/${e.id}`)}
                 disabled={e.questionCount === 0}
                 className="w-full glass-card rounded-2xl p-6 text-left hover:shadow-lg transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <h3 className="font-heading font-semibold text-lg text-foreground mb-2">{e.name}</h3>
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-heading font-semibold text-lg text-foreground">{cleanName}</h3>
+                  {isLive && (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full animate-pulse shrink-0 ml-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                      LIVE
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {e.questionCount} Qs</div>
                   <div className="flex items-center gap-1"><Award className="w-3.5 h-3.5" /> {e.totalMarks} marks</div>
@@ -95,7 +274,7 @@ const ExamSelect = () => {
                   <div>Neg: -{e.negMarks}</div>
                 </div>
               </button>
-            ))}
+            )})}
           </div>
         )}
       </div>

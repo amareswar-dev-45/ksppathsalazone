@@ -60,7 +60,17 @@ const TestInterface = () => {
   }, []);
 
   useEffect(() => {
-    if (exam && timeLeft === -1) setTimeLeft(exam.total_time_minutes * 60);
+    if (exam && timeLeft === -1) {
+      if (exam.name.toLowerCase().startsWith("[live]")) {
+        const createdTime = new Date(exam.created_at).getTime();
+        const nowTime = Date.now();
+        const elapsedSeconds = Math.floor((nowTime - createdTime) / 1000);
+        const remaining = (exam.total_time_minutes * 60) - elapsedSeconds;
+        setTimeLeft(Math.max(0, remaining));
+      } else {
+        setTimeLeft(exam.total_time_minutes * 60);
+      }
+    }
   }, [exam, timeLeft]);
 
   const submitTest = useCallback(async () => {
@@ -122,6 +132,26 @@ const TestInterface = () => {
     );
   }
 
+  // 🔒 SECURITY GATE — block access if Live Test is ended
+  if (exam && timeLeft === -1 && exam.name.toLowerCase().startsWith("[live]")) {
+    const createdTime = new Date(exam.created_at).getTime();
+    const nowTime = Date.now();
+    const elapsedSeconds = Math.floor((nowTime - createdTime) / 1000);
+    const remaining = (exam.total_time_minutes * 60) - elapsedSeconds;
+    if (remaining <= 0) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="text-center max-w-sm">
+            <Lock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="font-heading font-bold text-xl text-foreground mb-2">Live Test Ended</h2>
+            <p className="text-muted-foreground text-sm mb-6">This live test has concluded and is no longer available.</p>
+            <Button variant="outline" onClick={() => navigate("/student/start")}>← Back to Exams</Button>
+          </div>
+        </div>
+      );
+    }
+  }
+
   const currentQ = questions[currentIndex] as any;
   const minutes = Math.floor(Math.max(0, timeLeft) / 60);
   const seconds = Math.max(0, timeLeft) % 60;
@@ -140,7 +170,7 @@ const TestInterface = () => {
           {/* Left: Exam + Subject */}
           <div className="min-w-0 flex-1">
             {exam && (
-              <p className="text-xs font-bold text-primary truncate">Exam: {exam.name}</p>
+              <p className="text-xs font-bold text-primary truncate">Exam: {exam.name.replace(/^\[(live|advanced|pro)\]\s*/i, '')}</p>
             )}
             {currentSubject && (
               <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">

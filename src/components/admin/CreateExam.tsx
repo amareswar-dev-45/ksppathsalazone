@@ -13,6 +13,8 @@ const SUBJECTS = [
   "Math", "Reasoning", "Odia", "English", "Computer",
   "General Awareness", "DI", "Physics", "Chemistry", "Biology",
   "Part A", "Part B", "Part C", "Part D", "Part E",
+  "Odisha GK", "History", "Polity", "Geography", "Static GK",
+  "Current Affairs", "Economics",
 ];
 
 const MAX_QUESTIONS = 2000;
@@ -43,10 +45,13 @@ type Step = "name" | "mock" | "questions" | "time";
 interface CreateExamProps {
   /** If provided, we are editing an existing draft exam */
   editExamId?: string;
+  testType?: "live" | "advanced" | "pro";
+  duration?: number;
   onEditDone?: () => void;
+  onExamPublished?: () => void;
 }
 
-const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
+const CreateExam = ({ editExamId, testType = "advanced", duration, onEditDone, onExamPublished }: CreateExamProps) => {
   const queryClient = useQueryClient();
 
   // ── Edit mode bootstrap ──────────────────────────────────────────────────
@@ -57,7 +62,9 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
       const { data: exam } = await supabase.from("exams").select("*").eq("id", editExamId!).single();
       const { data: qs } = await supabase.from("questions").select("*").eq("exam_id", editExamId!).order("created_at");
       if (exam) {
-        setExamName(exam.name);
+        // Strip the [type] prefix from the exam name for display
+        const cleanName = exam.name.replace(/^\[(live|advanced|pro)\]\s*/i, '');
+        setExamName(cleanName);
         setMockNumber(exam.mock_number);
         setExistingExamId(editExamId!);
         setStep("questions");
@@ -91,7 +98,7 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
   const [mockNumber, setMockNumber] = useState<number>(1);
   const [questions, setQuestions] = useState<QuestionForm[]>([emptyQuestion()]);
   const [currentQ, setCurrentQ] = useState(0);
-  const [totalTime, setTotalTime] = useState(60);
+  const [totalTime, setTotalTime] = useState(duration || 60);
   const [uploading, setUploading] = useState(false);
   const [existingExamId, setExistingExamId] = useState<string | null>(editExamId || null);
   const [deletingQuestion, setDeletingQuestion] = useState(false);
@@ -166,10 +173,12 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
     mutationFn: async () => {
       let examId = existingExamId;
 
+      const nameWithPrefix = `[${testType}] ${examName}`;
+
       if (!examId) {
         // Create exam as draft (total_time_minutes = 0 means draft/not-live)
         const { data: exam, error: examError } = await supabase.from("exams").insert({
-          name: examName,
+          name: nameWithPrefix,
           mock_number: mockNumber,
           total_time_minutes: 0, // 0 = draft signal; students won't see exams without questions anyway
         }).select("id").single();
@@ -178,7 +187,7 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
         setExistingExamId(examId);
       } else {
         // Update exam meta
-        await supabase.from("exams").update({ name: examName, mock_number: mockNumber }).eq("id", examId!);
+        await supabase.from("exams").update({ name: nameWithPrefix, mock_number: mockNumber }).eq("id", examId!);
       }
 
       // Upsert questions (batch in chunks of 100 for performance)
@@ -223,16 +232,24 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
     mutationFn: async () => {
       let examId = existingExamId;
 
+      const nameWithPrefix = `[${testType}] ${examName}`;
+
       if (!examId) {
         const { data: exam, error: examError } = await supabase.from("exams").insert({
-          name: examName,
+          name: nameWithPrefix,
           mock_number: mockNumber,
           total_time_minutes: totalTime,
+          created_at: new Date().toISOString(),
         }).select("id").single();
         if (examError) throw examError;
         examId = exam.id;
       } else {
-        await supabase.from("exams").update({ total_time_minutes: totalTime, name: examName, mock_number: mockNumber }).eq("id", examId!);
+        await supabase.from("exams").update({ 
+          total_time_minutes: totalTime, 
+          name: nameWithPrefix, 
+          mock_number: mockNumber,
+          created_at: new Date().toISOString()
+        }).eq("id", examId!);
       }
 
       const CHUNK = 100;
@@ -266,6 +283,7 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
       queryClient.invalidateQueries({ queryKey: ["adminExams"] });
       toast.success(`🚀 Exam "${examName}" is now LIVE with ${questions.length} questions!`);
       resetForm();
+      if (onExamPublished) onExamPublished();
       if (onEditDone) onEditDone();
     },
     onError: (e: any) => toast.error(e.message),
@@ -410,6 +428,9 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
 
       {/* Question form */}
       <div className="glass-card rounded-2xl p-6 space-y-4">
+        <h3 className="font-heading font-bold text-lg text-foreground border-b border-border/50 pb-2">
+          Question {currentQ + 1}
+        </h3>
         {/* Subject Dropdown */}
         <div>
           <Label>Subject <span className="text-destructive">*</span></Label>
@@ -515,11 +536,17 @@ const CreateExam = ({ editExamId, onEditDone }: CreateExamProps) => {
             {deletingQuestion ? "Deleting..." : "Delete"}
           </Button>
           <Button
-            onClick={() => setStep("time")}
-            disabled={!allValid || questions.length === 0}
+            onClick={() => {
+              if (testType === "live") {
+                submitMutation.mutate();
+              } else {
+                setStep("time");
+              }
+            }}
+            disabled={!allValid || questions.length === 0 || (testType === "live" && submitMutation.isPending)}
             className="gap-2 gradient-primary border-0 text-primary-foreground"
           >
-            <Send className="w-4 h-4" /> Submit & Make Live
+            <Send className="w-4 h-4" /> {(testType === "live" && submitMutation.isPending) ? "Publishing..." : "Submit & Make Live"}
           </Button>
         </div>
       </div>
