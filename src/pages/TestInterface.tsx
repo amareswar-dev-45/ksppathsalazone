@@ -243,16 +243,12 @@ const TestInterface = () => {
           <>
             {/* Question header info */}
             {currentSubject && (
-              <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-muted-foreground">
-                <span>
-                  <span className="font-medium text-foreground">Subject:</span> {currentSubject}
-                </span>
-                <span>
-                  <span className="font-medium text-foreground">Marks:</span> +{Number(currentQ?.marks ?? 0)}
-                </span>
-                <span>
-                  <span className="font-medium text-foreground">Negative:</span> -{Number(currentQ?.negative_marks ?? 0)}
-                </span>
+              <div className="mb-6 p-4 rounded-xl border border-border bg-muted/30">
+                <p className="text-sm font-medium text-foreground mb-1">📘 Subject: <span className="font-bold">{currentSubject}</span></p>
+                <div className="flex items-center gap-4 text-sm font-medium">
+                  <p>✅ Marks: <span className="font-bold text-green-600">+{Number(currentQ?.marks ?? 0)}</span></p>
+                  <p>❌ Negative: <span className="font-bold text-red-600">-{Number(currentQ?.negative_marks ?? 0)}</span></p>
+                </div>
               </div>
             )}
 
