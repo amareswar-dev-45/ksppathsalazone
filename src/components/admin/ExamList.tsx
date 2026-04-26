@@ -37,7 +37,7 @@ const ExamList = () => {
   // If editing, render the CreateExam in edit mode
   if (editingExamId) {
     const examToEdit = exams.find((e: any) => e.id === editingExamId);
-    const deducedTypeMatch = examToEdit?.name.match(/^\[(live|advanced|pro)\]/i);
+    const deducedTypeMatch = examToEdit?.name.match(/^\[(live|advanced|pro)(?::.*?)?\]/i);
     const deducedType = deducedTypeMatch ? deducedTypeMatch[1].toLowerCase() : "advanced";
     
     return (
@@ -60,9 +60,9 @@ const ExamList = () => {
         const isDraft = !e.total_time_minutes || e.total_time_minutes === 0;
         
         // Extract type prefix
-        const typeMatch = e.name.match(/^\[(live|advanced|pro)\]/i);
+        const typeMatch = e.name.match(/^\[(live|advanced|pro)(?::(.*?))?\]/i);
         const testType = typeMatch ? typeMatch[1].toLowerCase() : "advanced";
-        const cleanName = e.name.replace(/^\[(live|advanced|pro)\]\s*/i, '');
+        const cleanName = e.name.replace(/^\[(live|advanced|pro)(?::.*?)?\]\s*/i, '');
         
         return (
           <div key={e.id} className="glass-card rounded-xl p-4">
@@ -74,7 +74,7 @@ const ExamList = () => {
                     testType === 'pro' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' :
                     'bg-primary/10 text-primary border border-primary/20'
                   }`}>
-                    {testType}
+                    {testType === 'pro' && typeMatch && typeMatch[2] ? `PRO (PWD: ${typeMatch[2]})` : testType}
                   </span>
                   <p className="text-foreground font-medium">{cleanName}</p>
                   {isDraft ? (

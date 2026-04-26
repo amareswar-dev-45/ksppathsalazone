@@ -27,12 +27,21 @@ const ExamSelect = () => {
   const [proUnlocked, setProUnlocked] = useState(false);
   const [showProPwd, setShowProPwd] = useState(false);
 
+  const [unlockedProPassword, setUnlockedProPassword] = useState("");
+
   const handleProUnlock = () => {
-    if (proPassword === "ksp@123") {
+    // Find if any published pro exam has this exact password
+    const matched = exams.find((e: any) => {
+      const typeMatch = e.name.match(/^\[pro:(.*?)\]/i);
+      return typeMatch && typeMatch[1] === proPassword;
+    });
+
+    if (matched) {
+      setUnlockedProPassword(proPassword);
       setProUnlocked(true);
       setProError("");
     } else {
-      setProError("Incorrect password. Please try again.");
+      setProError("Invalid Password. No test found.");
     }
   };
 
@@ -199,9 +208,14 @@ const ExamSelect = () => {
 
   // Filter exams by selected type and status
   const filteredExams = exams.filter((e: any) => {
-    const typeMatch = e.name.match(/^\[(live|advanced|pro)\]/i);
+    const typeMatch = e.name.match(/^\[(live|advanced|pro)(?::(.*?))?\]/i);
     const eType = typeMatch ? typeMatch[1].toLowerCase() : "advanced";
     if (eType !== testType) return false;
+    
+    if (eType === "pro") {
+      const pwd = typeMatch ? typeMatch[2] : undefined;
+      if (pwd !== unlockedProPassword) return false;
+    }
     
     // For live tests, do not show if they have already ended
     if (eType === "live") {
@@ -250,7 +264,7 @@ const ExamSelect = () => {
         ) : (
           <div className="space-y-3">
             {filteredExams.map((e: any) => {
-              const cleanName = e.name.replace(/^\[(live|advanced|pro)\]\s*/i, '');
+              const cleanName = e.name.replace(/^\[(live|advanced|pro)(?::.*?)?\]\s*/i, '');
               return (
               <button
                 key={e.id}

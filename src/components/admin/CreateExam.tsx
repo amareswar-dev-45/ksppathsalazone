@@ -47,11 +47,12 @@ interface CreateExamProps {
   editExamId?: string;
   testType?: "live" | "advanced" | "pro";
   duration?: number;
+  proPassword?: string;
   onEditDone?: () => void;
   onExamPublished?: () => void;
 }
 
-const CreateExam = ({ editExamId, testType = "advanced", duration, onEditDone, onExamPublished }: CreateExamProps) => {
+const CreateExam = ({ editExamId, testType = "advanced", duration, proPassword, onEditDone, onExamPublished }: CreateExamProps) => {
   const queryClient = useQueryClient();
 
   // ── Edit mode bootstrap ──────────────────────────────────────────────────
@@ -62,9 +63,14 @@ const CreateExam = ({ editExamId, testType = "advanced", duration, onEditDone, o
       const { data: exam } = await supabase.from("exams").select("*").eq("id", editExamId!).single();
       const { data: qs } = await supabase.from("questions").select("*").eq("exam_id", editExamId!).order("created_at");
       if (exam) {
-        // Strip the [type] prefix from the exam name for display
-        const cleanName = exam.name.replace(/^\[(live|advanced|pro)\]\s*/i, '');
-        setExamName(cleanName);
+        // Strip the [type] prefix and extract pro password if any
+        const typeMatch = exam.name.match(/^\[(live|advanced|pro)(?::(.*?))?\]\s*(.*)/i);
+        if (typeMatch) {
+          if (typeMatch[2]) setLoadedProPassword(typeMatch[2]);
+          setExamName(typeMatch[3]);
+        } else {
+          setExamName(exam.name);
+        }
         setMockNumber(exam.mock_number);
         setExistingExamId(editExamId!);
         setStep("questions");
@@ -102,6 +108,7 @@ const CreateExam = ({ editExamId, testType = "advanced", duration, onEditDone, o
   const [uploading, setUploading] = useState(false);
   const [existingExamId, setExistingExamId] = useState<string | null>(editExamId || null);
   const [deletingQuestion, setDeletingQuestion] = useState(false);
+  const [loadedProPassword, setLoadedProPassword] = useState<string | null>(null);
 
   const updateQuestion = useCallback((key: keyof QuestionForm, value: any) => {
     setQuestions(prev => {
@@ -173,7 +180,10 @@ const CreateExam = ({ editExamId, testType = "advanced", duration, onEditDone, o
     mutationFn: async () => {
       let examId = existingExamId;
 
-      const nameWithPrefix = `[${testType}] ${examName}`;
+      let finalProPassword = proPassword || loadedProPassword;
+      let nameWithPrefix = testType === "pro" && finalProPassword 
+        ? `[${testType}:${finalProPassword}] ${examName}` 
+        : `[${testType}] ${examName}`;
 
       if (!examId) {
         // Create exam as draft (total_time_minutes = 0 means draft/not-live)
@@ -232,7 +242,10 @@ const CreateExam = ({ editExamId, testType = "advanced", duration, onEditDone, o
     mutationFn: async () => {
       let examId = existingExamId;
 
-      const nameWithPrefix = `[${testType}] ${examName}`;
+      let finalProPassword = proPassword || loadedProPassword;
+      let nameWithPrefix = testType === "pro" && finalProPassword 
+        ? `[${testType}:${finalProPassword}] ${examName}` 
+        : `[${testType}] ${examName}`;
 
       if (!examId) {
         const { data: exam, error: examError } = await supabase.from("exams").insert({

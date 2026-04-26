@@ -101,11 +101,11 @@ const AdminDashboard = () => {
   };
 
   const handleProUnlock = () => {
-    if (proPassword === "ksp@123") {
+    if (proPassword.trim() === "") {
+      setProError("Please create a password.");
+    } else {
       setProUnlocked(true);
       setProError("");
-    } else {
-      setProError("Incorrect password. Please try again.");
     }
   };
 
@@ -280,16 +280,16 @@ const AdminDashboard = () => {
               <div className="w-14 h-14 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center mx-auto mb-5">
                 <Shield className="w-7 h-7 text-yellow-400" />
               </div>
-              <h3 className="font-heading font-semibold text-lg text-foreground text-center mb-1">Password Required</h3>
-              <p className="text-muted-foreground text-sm text-center mb-6">Enter the Pro Test password to continue</p>
-              <Label>Password</Label>
+              <h3 className="font-heading font-semibold text-lg text-foreground text-center mb-1">Create a Password</h3>
+              <p className="text-muted-foreground text-sm text-center mb-6">Set a password for this specific Pro Test</p>
+              <Label>Set Password</Label>
               <div className="relative mt-1 mb-4">
                 <Input
                   type={showProPwd ? "text" : "password"}
                   value={proPassword}
                   onChange={e => { setProPassword(e.target.value); setProError(""); }}
                   onKeyDown={e => e.key === "Enter" && handleProUnlock()}
-                  placeholder="Enter password..."
+                  placeholder="Create a new password..."
                   className="pr-10"
                 />
                 <button
@@ -304,7 +304,7 @@ const AdminDashboard = () => {
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setCreateMode("menu")} className="flex-1">Back</Button>
                 <Button onClick={handleProUnlock} className="flex-1 gap-2 bg-yellow-500 hover:bg-yellow-600 text-black border-0">
-                  <Shield className="w-4 h-4" /> Unlock
+                  <Shield className="w-4 h-4" /> Next
                 </Button>
               </div>
             </div>
@@ -322,7 +322,7 @@ const AdminDashboard = () => {
           <Button variant="outline" size="sm" onClick={closeCreateMode} className="gap-2"><X className="w-4 h-4" /> Close</Button>
         </header>
         <div className="max-w-6xl mx-auto p-4">
-          <CreateExam testType="pro" onExamPublished={handleExamPublished} onEditDone={closeCreateMode} />
+          <CreateExam testType="pro" proPassword={proPassword} onExamPublished={handleExamPublished} onEditDone={closeCreateMode} />
         </div>
       </div>
     );

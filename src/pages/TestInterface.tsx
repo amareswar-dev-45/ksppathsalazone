@@ -170,7 +170,7 @@ const TestInterface = () => {
           {/* Left: Exam + Subject */}
           <div className="min-w-0 flex-1">
             {exam && (
-              <p className="text-xs font-bold text-primary truncate">Exam: {exam.name.replace(/^\[(live|advanced|pro)\]\s*/i, '')}</p>
+              <p className="text-xs font-bold text-primary truncate">Exam: {exam.name.replace(/^\[(live|advanced|pro)(?::.*?)?\]\s*/i, '')}</p>
             )}
             {currentSubject && (
               <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">

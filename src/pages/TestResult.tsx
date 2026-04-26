@@ -75,6 +75,104 @@ const TestResult = () => {
     return <span className="text-xs font-bold text-muted-foreground w-4 text-center">#{rank}</span>;
   };
 
+  const generatePrintHTML = () => {
+    let html = `
+    <html><head><title>Solutions - ${response.name.replace(/^\[(live|advanced|pro)(?::.*?)?\]\s*/i, '')}</title>
+    <style>
+      @page { margin: 20mm; }
+      body { 
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+        padding: 0; color: #000; line-height: 1.6; max-width: 800px; margin: 0 auto; 
+      }
+      h1 { text-align: center; color: #111; margin-bottom: 5px; font-size: 28px; }
+      .header-sub { 
+        text-align: center; color: #555; margin-bottom: 30px; font-size: 15px; 
+        border-bottom: 2px solid #eee; padding-bottom: 20px; 
+      }
+      .question-container {
+        margin-bottom: 35px; padding-bottom: 20px;
+        border-bottom: 1px dashed #ccc; page-break-inside: avoid;
+      }
+      .question-text {
+        color: #dc2626; /* RED */
+        font-size: 17px; font-weight: bold; margin-bottom: 15px;
+      }
+      .options-list {
+        list-style-type: none; padding-left: 0; margin-bottom: 15px;
+      }
+      .option-item {
+        margin-bottom: 8px; font-size: 15px; color: #333; display: flex; align-items: flex-start;
+      }
+      .opt-label { font-weight: bold; margin-right: 10px; min-width: 20px; }
+      .opt-correct { color: #16a34a; font-weight: bold; margin-left: 8px; }
+      .opt-wrong { color: #dc2626; font-weight: bold; margin-left: 8px; }
+      .solution-box {
+        background-color: #f8fafc; border-left: 4px solid #3b82f6;
+        padding: 16px; color: #000; /* BLACK */ font-size: 15px;
+        border-radius: 4px; margin-top: 15px;
+      }
+      .solution-label { font-weight: bold; margin-bottom: 6px; display: block; color: #3b82f6; }
+      .q-image { max-width: 400px; max-height: 300px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ddd; object-fit: contain; }
+    </style>
+    </head><body>
+    <h1>Test Solutions</h1>
+    <div class="header-sub">
+      <strong>Name:</strong> ${response.name.replace(/^\[(live|advanced|pro)(?::.*?)?\]\s*/i, '')} &nbsp;|&nbsp; 
+      <strong>Score:</strong> ${response.final_score} &nbsp;|&nbsp; 
+      <strong>Accuracy:</strong> ${accuracy}%
+    </div>
+    <div class="content">
+    `;
+
+    questions.forEach((q, i) => {
+      const ans = answers.find(a => a.questionId === q.id);
+      const selected = ans?.selected;
+      const isCorrect = selected === q.correct_answer;
+      
+      let imgHtml = '';
+      if (q.image_url) {
+        imgHtml = `<img src="${q.image_url}" class="q-image" />`;
+      }
+      
+      let optionsHtml = '';
+      [q.option_1, q.option_2, q.option_3, q.option_4].forEach((opt, oi) => {
+        const optNum = oi + 1;
+        const isCorrectOpt = optNum === q.correct_answer;
+        const isSelectedOpt = optNum === selected;
+        
+        let badge = '';
+        if (isCorrectOpt) badge = '<span class="opt-correct"> ✓ Correct</span>';
+        else if (isSelectedOpt && !isCorrect) badge = '<span class="opt-wrong"> ✗ Your Answer</span>';
+        
+        optionsHtml += `<li class="option-item"><span class="opt-label">${String.fromCharCode(65 + oi)}.</span> <span>${opt} ${badge}</span></li>`;
+      });
+      
+      let solutionHtml = '';
+      if (q.solution) {
+        solutionHtml = `
+          <div class="solution-box">
+            <span class="solution-label">Solution / Explanation:</span>
+            ${q.solution}
+          </div>
+        `;
+      }
+      
+      html += `
+      <div class="question-container">
+        <div class="question-text">Q${i + 1}. ${q.question_text}</div>
+        ${imgHtml}
+        <ul class="options-list">
+          ${optionsHtml}
+        </ul>
+        ${solutionHtml}
+      </div>
+      `;
+    });
+
+    html += `</div></body></html>`;
+    return html;
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-2xl mx-auto animate-fade-in">
@@ -83,7 +181,7 @@ const TestResult = () => {
         <div className="glass-card rounded-2xl p-8 mb-4">
           <h1 className="font-heading font-bold text-3xl text-foreground mb-1">Test Result</h1>
           <p className="text-muted-foreground text-sm mb-6">
-            {response.name} • {response.email} • {response.phone}
+            {response.name.replace(/^\[(live|advanced|pro)(?::.*?)?\]\s*/i, '')} • {response.email} • {response.phone}
           </p>
 
           <div className="text-center mb-8">
@@ -187,25 +285,11 @@ const TestResult = () => {
               size="sm"
               className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
               onClick={() => {
-                const printContent = document.getElementById("solutions-section");
-                if (!printContent) return;
                 const win = window.open("", "_blank");
                 if (!win) return;
-                win.document.write(`<html><head><title>Solutions - ${response.name}</title><style>
-                  body { font-family: system-ui, sans-serif; padding: 20px; color: #111; }
-                  .question-block { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-                  .subject-tag { background: #eff6ff; color: #3b82f6; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; display: inline-block; margin-bottom: 8px; }
-                  .option { padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin: 4px 0; font-size: 13px; }
-                  .correct { border-color: #22c55e; background: #f0fdf4; }
-                  .wrong { border-color: #ef4444; background: #fef2f2; }
-                  .solution { background: #f8fafc; border-left: 3px solid #3b82f6; padding: 8px 12px; margin-top: 8px; font-size: 13px; border-radius: 4px; }
-                  h1 { font-size: 20px; margin-bottom: 4px; } p.sub { color: #64748b; margin-bottom: 16px; font-size: 13px; }
-                </style></head><body>`);
-                win.document.write(`<h1>Test Solutions</h1><p class="sub">${response.name} • Score: ${response.final_score}</p>`);
-                win.document.write(printContent.innerHTML);
-                win.document.write(`</body></html>`);
+                win.document.write(generatePrintHTML());
                 win.document.close();
-                win.print();
+                setTimeout(() => { win.print(); }, 500);
               }}
             >
               <Printer className="w-4 h-4" /> Print
@@ -215,24 +299,9 @@ const TestResult = () => {
               size="sm"
               className="gap-2 border-secondary/30 text-secondary hover:bg-secondary/10"
               onClick={() => {
-                // Generate a simple printable PDF via print dialog
-                const printContent = document.getElementById("solutions-section");
-                if (!printContent) return;
                 const win = window.open("", "_blank");
                 if (!win) return;
-                win.document.write(`<html><head><title>Solutions - ${response.name}</title><style>
-                  @page { margin: 15mm; } body { font-family: system-ui, sans-serif; padding: 0; color: #111; }
-                  .question-block { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px; page-break-inside: avoid; }
-                  .subject-tag { background: #eff6ff; color: #3b82f6; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; display: inline-block; margin-bottom: 8px; }
-                  .option { padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin: 4px 0; font-size: 13px; }
-                  .correct { border-color: #22c55e; background: #f0fdf4; }
-                  .wrong { border-color: #ef4444; background: #fef2f2; }
-                  .solution { background: #f8fafc; border-left: 3px solid #3b82f6; padding: 8px 12px; margin-top: 8px; font-size: 13px; border-radius: 4px; }
-                  h1 { font-size: 20px; margin-bottom: 4px; } p.sub { color: #64748b; margin-bottom: 16px; font-size: 13px; }
-                </style></head><body>`);
-                win.document.write(`<h1>Test Solutions</h1><p class="sub">${response.name} • Score: ${response.final_score} • Accuracy: ${accuracy}%</p>`);
-                win.document.write(printContent.innerHTML);
-                win.document.write(`</body></html>`);
+                win.document.write(generatePrintHTML());
                 win.document.close();
                 setTimeout(() => { win.print(); }, 500);
               }}
