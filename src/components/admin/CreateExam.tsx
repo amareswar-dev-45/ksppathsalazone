@@ -50,9 +50,10 @@ interface CreateExamProps {
   proPassword?: string;
   onEditDone?: () => void;
   onExamPublished?: () => void;
+  onStartLiveTimer?: () => void;
 }
 
-const CreateExam = ({ editExamId, testType = "advanced", duration, proPassword, onEditDone, onExamPublished }: CreateExamProps) => {
+const CreateExam = ({ editExamId, testType = "advanced", duration, proPassword, onEditDone, onExamPublished, onStartLiveTimer }: CreateExamProps) => {
   const queryClient = useQueryClient();
 
   // ── Edit mode bootstrap ──────────────────────────────────────────────────
@@ -63,10 +64,11 @@ const CreateExam = ({ editExamId, testType = "advanced", duration, proPassword, 
       const { data: exam } = await supabase.from("exams").select("*").eq("id", editExamId!).single();
       const { data: qs } = await supabase.from("questions").select("*").eq("exam_id", editExamId!).order("created_at");
       if (exam) {
-        // Strip the [type] prefix and extract pro password if any
+        // Strip the [type] prefix and extract pro password or live duration if any
         const typeMatch = exam.name.match(/^\[(live|advanced|pro)(?::(.*?))?\]\s*(.*)/i);
         if (typeMatch) {
-          if (typeMatch[2]) setLoadedProPassword(typeMatch[2]);
+          const type = typeMatch[1].toLowerCase();
+          if (type === "pro" && typeMatch[2]) setLoadedProPassword(typeMatch[2]);
           setExamName(typeMatch[3]);
         } else {
           setExamName(exam.name);
@@ -109,6 +111,7 @@ const CreateExam = ({ editExamId, testType = "advanced", duration, proPassword, 
   const [existingExamId, setExistingExamId] = useState<string | null>(editExamId || null);
   const [deletingQuestion, setDeletingQuestion] = useState(false);
   const [loadedProPassword, setLoadedProPassword] = useState<string | null>(null);
+  const [liveStartTime, setLiveStartTime] = useState<string | null>(null);
 
   const updateQuestion = useCallback((key: keyof QuestionForm, value: any) => {
     setQuestions(prev => {
@@ -183,6 +186,8 @@ const CreateExam = ({ editExamId, testType = "advanced", duration, proPassword, 
       let finalProPassword = proPassword || loadedProPassword;
       let nameWithPrefix = testType === "pro" && finalProPassword 
         ? `[${testType}:${finalProPassword}] ${examName}` 
+        : testType === "live" && duration
+        ? `[${testType}:${duration}] ${examName}`
         : `[${testType}] ${examName}`;
 
       if (!examId) {
@@ -245,14 +250,18 @@ const CreateExam = ({ editExamId, testType = "advanced", duration, proPassword, 
       let finalProPassword = proPassword || loadedProPassword;
       let nameWithPrefix = testType === "pro" && finalProPassword 
         ? `[${testType}:${finalProPassword}] ${examName}` 
+        : testType === "live" && duration
+        ? `[${testType}:${duration}] ${examName}`
         : `[${testType}] ${examName}`;
+
+      const createdAt = liveStartTime || new Date().toISOString();
 
       if (!examId) {
         const { data: exam, error: examError } = await supabase.from("exams").insert({
           name: nameWithPrefix,
           mock_number: mockNumber,
           total_time_minutes: totalTime,
-          created_at: new Date().toISOString(),
+          created_at: createdAt,
         }).select("id").single();
         if (examError) throw examError;
         examId = exam.id;
@@ -261,7 +270,7 @@ const CreateExam = ({ editExamId, testType = "advanced", duration, proPassword, 
           total_time_minutes: totalTime, 
           name: nameWithPrefix, 
           mock_number: mockNumber,
-          created_at: new Date().toISOString()
+          created_at: createdAt
         }).eq("id", examId!);
       }
 
@@ -365,10 +374,10 @@ const CreateExam = ({ editExamId, testType = "advanced", duration, proPassword, 
         <h2 className="font-heading font-bold text-xl text-foreground mb-2">🚀 Make Exam Live</h2>
         <p className="text-sm text-muted-foreground mb-1">{examName} • Mock {mockNumber}</p>
         <p className="text-sm text-muted-foreground mb-6">{validCount} valid questions ready</p>
-        <Label>Total Exam Time (in minutes)</Label>
+        <Label>{testType === "live" ? "Enter Exam Time (duration for students in minutes)" : "Total Exam Time (in minutes)"}</Label>
         <Input
           type="number" min={1} value={totalTime}
-          onChange={e => setTotalTime(parseInt(e.target.value) || 60)}
+          onChange={e => setTotalTime(parseInt(e.target.value) || (testType === "live" ? 20 : 60))}
           className="mt-1 mb-6"
         />
         <p className="text-xs text-amber-500 mb-4">⚠️ After submitting, the exam becomes visible to all students.</p>
@@ -551,15 +560,17 @@ const CreateExam = ({ editExamId, testType = "advanced", duration, proPassword, 
           <Button
             onClick={() => {
               if (testType === "live") {
-                submitMutation.mutate();
-              } else {
-                setStep("time");
+                if (!liveStartTime) {
+                  setLiveStartTime(new Date().toISOString());
+                  if (onStartLiveTimer) onStartLiveTimer();
+                }
               }
+              setStep("time");
             }}
-            disabled={!allValid || questions.length === 0 || (testType === "live" && submitMutation.isPending)}
+            disabled={!allValid || questions.length === 0}
             className="gap-2 gradient-primary border-0 text-primary-foreground"
           >
-            <Send className="w-4 h-4" /> {(testType === "live" && submitMutation.isPending) ? "Publishing..." : "Submit & Make Live"}
+            {testType === "live" ? "Submit/Create Test" : "Next"} <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       </div>

@@ -98,7 +98,7 @@ const ExamDetails = () => {
 
         <div className="glass-card rounded-2xl p-8 text-center">
           {/* Exam Name */}
-          <h1 className="font-heading font-bold text-2xl text-foreground mb-1">{exam.name.replace(/^\[(live|advanced|pro)\]\s*/i, '')}</h1>
+          <h1 className="font-heading font-bold text-2xl text-foreground mb-1">{exam.name.replace(/^\[(live|advanced|pro)(?::.*?)?\]\s*/i, '')}</h1>
           <p className="text-muted-foreground text-sm mb-6">Mock {exam.mock_number}</p>
 
           {/* Stats Grid */}

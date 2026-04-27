@@ -207,25 +207,27 @@ const ExamSelect = () => {
   }
 
   // Filter exams by selected type and status
-  const filteredExams = exams.filter((e: any) => {
+  const processedExams = exams.map((e: any) => {
     const typeMatch = e.name.match(/^\[(live|advanced|pro)(?::(.*?))?\]/i);
     const eType = typeMatch ? typeMatch[1].toLowerCase() : "advanced";
-    if (eType !== testType) return false;
-    
-    if (eType === "pro") {
-      const pwd = typeMatch ? typeMatch[2] : undefined;
-      if (pwd !== unlockedProPassword) return false;
-    }
-    
-    // For live tests, do not show if they have already ended
+    const extraData = typeMatch ? typeMatch[2] : undefined;
+    let isLiveExpired = false;
+
     if (eType === "live") {
+      const liveDurationMinutes = extraData ? parseInt(extraData, 10) : 30; // fallback to 30 mins
       const createdTime = new Date(e.created_at).getTime();
       const nowTime = Date.now();
       const elapsedSeconds = Math.floor((nowTime - createdTime) / 1000);
-      const remaining = (e.total_time_minutes * 60) - elapsedSeconds;
-      if (remaining <= 0) return false;
+      const remaining = (liveDurationMinutes * 60) - elapsedSeconds;
+      if (remaining <= 0) isLiveExpired = true;
     }
-    
+
+    return { ...e, eType, isLiveExpired, pwd: extraData };
+  });
+
+  const filteredExams = processedExams.filter((e: any) => {
+    if (e.eType !== testType) return false;
+    if (e.eType === "pro" && e.pwd !== unlockedProPassword) return false;
     return true;
   });
 
@@ -269,12 +271,19 @@ const ExamSelect = () => {
               <button
                 key={e.id}
                 onClick={() => navigate(`/student/exam/${e.id}`)}
-                disabled={e.questionCount === 0}
-                className="w-full glass-card rounded-2xl p-6 text-left hover:shadow-lg transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={e.questionCount === 0 || e.isLiveExpired}
+                className="w-full glass-card rounded-2xl p-6 text-left hover:shadow-lg transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
               >
+                {e.isLiveExpired && (
+                  <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                    <span className="bg-destructive text-destructive-foreground px-3 py-1.5 rounded-full font-bold text-sm shadow-md flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5" /> Expired
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-heading font-semibold text-lg text-foreground">{cleanName}</h3>
-                  {isLive && (
+                  {isLive && !e.isLiveExpired && (
                     <span className="flex items-center gap-1 text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full animate-pulse shrink-0 ml-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
                       LIVE

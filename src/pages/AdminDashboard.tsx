@@ -94,7 +94,11 @@ const AdminDashboard = () => {
   };
 
   const handleExamPublished = () => {
-    if (createMode === "live") {
+    // We handle the liveEndsAt in handleStartLiveTimer now
+  };
+
+  const handleStartLiveTimer = () => {
+    if (createMode === "live" && !liveEndsAt) {
       const end = new Date(Date.now() + liveDurationMinutes * 60 * 1000);
       setLiveEndsAt(end);
     }
@@ -244,7 +248,7 @@ const AdminDashboard = () => {
           </div>
         ) : (
           <div className="max-w-6xl mx-auto p-4">
-            <CreateExam testType="live" duration={liveDurationMinutes} onExamPublished={handleExamPublished} onEditDone={closeCreateMode} />
+            <CreateExam testType="live" duration={liveDurationMinutes} onExamPublished={handleExamPublished} onStartLiveTimer={handleStartLiveTimer} onEditDone={closeCreateMode} />
           </div>
         )}
       </div>

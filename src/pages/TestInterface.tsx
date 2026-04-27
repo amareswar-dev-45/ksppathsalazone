@@ -61,15 +61,9 @@ const TestInterface = () => {
 
   useEffect(() => {
     if (exam && timeLeft === -1) {
-      if (exam.name.toLowerCase().startsWith("[live]")) {
-        const createdTime = new Date(exam.created_at).getTime();
-        const nowTime = Date.now();
-        const elapsedSeconds = Math.floor((nowTime - createdTime) / 1000);
-        const remaining = (exam.total_time_minutes * 60) - elapsedSeconds;
-        setTimeLeft(Math.max(0, remaining));
-      } else {
-        setTimeLeft(exam.total_time_minutes * 60);
-      }
+      // Regardless of live or normal test, the student always gets the full exam time (total_time_minutes).
+      // Live visibility window is handled elsewhere.
+      setTimeLeft(exam.total_time_minutes * 60);
     }
   }, [exam, timeLeft]);
 
@@ -133,22 +127,29 @@ const TestInterface = () => {
   }
 
   // 🔒 SECURITY GATE — block access if Live Test is ended
-  if (exam && timeLeft === -1 && exam.name.toLowerCase().startsWith("[live]")) {
-    const createdTime = new Date(exam.created_at).getTime();
-    const nowTime = Date.now();
-    const elapsedSeconds = Math.floor((nowTime - createdTime) / 1000);
-    const remaining = (exam.total_time_minutes * 60) - elapsedSeconds;
-    if (remaining <= 0) {
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <div className="text-center max-w-sm">
-            <Lock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="font-heading font-bold text-xl text-foreground mb-2">Live Test Ended</h2>
-            <p className="text-muted-foreground text-sm mb-6">This live test has concluded and is no longer available.</p>
-            <Button variant="outline" onClick={() => navigate("/student/start")}>← Back to Exams</Button>
+  if (exam && timeLeft === -1) {
+    const typeMatch = exam.name.match(/^\[(live|advanced|pro)(?::(.*?))?\]/i);
+    const eType = typeMatch ? typeMatch[1].toLowerCase() : "advanced";
+    const extraData = typeMatch ? typeMatch[2] : undefined;
+
+    if (eType === "live") {
+      const liveDurationMinutes = extraData ? parseInt(extraData, 10) : 30;
+      const createdTime = new Date(exam.created_at).getTime();
+      const nowTime = Date.now();
+      const elapsedSeconds = Math.floor((nowTime - createdTime) / 1000);
+      const remaining = (liveDurationMinutes * 60) - elapsedSeconds;
+      if (remaining <= 0) {
+        return (
+          <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            <div className="text-center max-w-sm">
+              <Lock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h2 className="font-heading font-bold text-xl text-foreground mb-2">Live Test Ended</h2>
+              <p className="text-muted-foreground text-sm mb-6">This live test has concluded and is no longer available.</p>
+              <Button variant="outline" onClick={() => navigate("/student/start")}>← Back to Exams</Button>
+            </div>
           </div>
-        </div>
-      );
+        );
+      }
     }
   }
 
